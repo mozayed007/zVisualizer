@@ -20,7 +20,7 @@ A visual learning companion powered by **PydanticAI** and **Google Gemini**. Ask
 │              ▲                    │              ▲                          │
 │              │ widget_code        │              │ show_widget tool call    │
 │              │ (SVG/HTML)         │              │                          │
-│  ┌───────────┴────────────────┐   │  ┌──────────┴────────────────────────┐  │
+│  ┌───────────┴────────────────┐   │  ┌───────────┴───────────────────────┐  │
 │  │ App.tsx                    │   │  │ Agent (Gemini via PydanticAI)     │  │
 │  │ • Chat message management  │   │  │ • System prompt with skill docs   │  │
 │  │ • SSE event handling       │◄──┼──┤ • Structured output: WidgetPayload│  │
@@ -219,7 +219,7 @@ User Request
 │ SSE Event Stream        │
 │  - assistant_started    │
 │  - thinking_delta       │
-│  - text_delta            │
+│  - text_delta           │
 │  - widget_loading       │
 │  - widget_ready         │
 │  - assistant_done       │
