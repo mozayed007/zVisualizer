@@ -1,0 +1,2185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>How Claude Visuals Work — Complete Guide</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;600&family=Plus+Jakarta+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d0f;
+  --bg2: #141417;
+  --bg3: #1a1a1f;
+  --bg4: #222228;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.14);
+  --text: #e8e6df;
+  --text2: #9b9890;
+  --text3: #5e5c58;
+  --purple: #7f77dd;
+  --purple-dim: #3c3489;
+  --purple-bg: rgba(127,119,221,0.1);
+  --teal: #1d9e75;
+  --teal-dim: #085041;
+  --teal-bg: rgba(29,158,117,0.1);
+  --amber: #ef9f27;
+  --amber-bg: rgba(239,159,39,0.1);
+  --coral: #d85a30;
+  --blue: #378add;
+  --blue-bg: rgba(55,138,221,0.1);
+  --green: #639922;
+  --font: 'Plus Jakarta Sans', sans-serif;
+  --font-display: 'Playfair Display', serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --radius: 10px;
+  --radius-sm: 6px;
+  --sidebar-w: 220px;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 15px;
+  line-height: 1.7;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ── SIDEBAR ─────────────────────────────────────────── */
+#sidebar {
+  width: var(--sidebar-w);
+  min-height: 100vh;
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  position: fixed;
+  top: 0; left: 0;
+  display: flex;
+  flex-direction: column;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.sidebar-logo {
+  padding: 28px 20px 20px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-logo .mark {
+  font-family: var(--font-display);
+  font-size: 17px;
+  color: var(--text);
+  line-height: 1.3;
+}
+.sidebar-logo .sub {
+  font-size: 11px;
+  color: var(--text3);
+  margin-top: 3px;
+  font-family: var(--font-mono);
+}
+
+nav { padding: 16px 0; flex: 1; }
+
+nav a {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 20px;
+  text-decoration: none;
+  color: var(--text2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s;
+  border-left: 2px solid transparent;
+}
+nav a:hover { color: var(--text); background: var(--bg3); }
+nav a.active { color: var(--purple); border-left-color: var(--purple); background: var(--purple-bg); }
+
+.nav-num {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  min-width: 18px;
+}
+
+.sidebar-footer {
+  padding: 16px 20px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+}
+
+/* ── MAIN ────────────────────────────────────────────── */
+main {
+  margin-left: var(--sidebar-w);
+  flex: 1;
+  max-width: 860px;
+  padding: 0 48px 80px;
+}
+
+/* ── SECTIONS ─────────────────────────────────────────── */
+section {
+  padding: 64px 0 40px;
+  border-bottom: 1px solid var(--border);
+}
+section:last-child { border-bottom: none; }
+
+.section-eyebrow {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--purple);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+h1 {
+  font-family: var(--font-display);
+  font-size: 38px;
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--text);
+  margin-bottom: 16px;
+}
+h2 {
+  font-family: var(--font-display);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 12px;
+  line-height: 1.3;
+}
+h3 {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+p { color: var(--text2); margin-bottom: 14px; }
+p:last-child { margin-bottom: 0; }
+
+.lead {
+  font-size: 17px;
+  color: var(--text);
+  line-height: 1.65;
+  margin-bottom: 20px;
+}
+
+/* ── CALLOUT BOXES ─────────────────────────────────────── */
+.callout {
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 20px 0;
+  background: var(--bg3);
+}
+.callout.purple { border-color: var(--purple-dim); background: var(--purple-bg); }
+.callout.teal   { border-color: var(--teal-dim);   background: var(--teal-bg); }
+.callout.amber  { border-color: rgba(239,159,39,0.3); background: var(--amber-bg); }
+.callout-title {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.callout.purple .callout-title { color: var(--purple); }
+.callout.teal   .callout-title { color: var(--teal); }
+.callout.amber  .callout-title { color: var(--amber); }
+
+/* ── CODE BLOCKS ───────────────────────────────────────── */
+pre {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px 20px;
+  overflow-x: auto;
+  margin: 16px 0;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: #c9c7c0;
+}
+code { font-family: var(--font-mono); font-size: 12.5px; }
+.inline-code {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--purple);
+}
+
+.kw  { color: #c792ea; }
+.attr{ color: #80cbc4; }
+.str { color: #c3e88d; }
+.cm  { color: #546e7a; font-style: italic; }
+.tag { color: #f07178; }
+.val { color: #f78c6c; }
+.fn  { color: #82aaff; }
+
+/* ── GRID CARDS ────────────────────────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin: 20px 0;
+}
+.card-grid.three { grid-template-columns: 1fr 1fr 1fr; }
+
+.card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  transition: border-color 0.15s;
+}
+.card:hover { border-color: var(--border2); }
+.card-label {
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin-bottom: 6px;
+}
+.card h3 { font-size: 14px; margin-bottom: 5px; }
+.card p { font-size: 13px; color: var(--text2); margin: 0; }
+
+/* ── DECISION TREE ─────────────────────────────────────── */
+.decision-tree {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 24px;
+  margin: 20px 0;
+  overflow-x: auto;
+}
+
+/* ── PIPELINE LAYERS ───────────────────────────────────── */
+.layer-list { margin: 20px 0; }
+
+.layer-item {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 6px;
+  cursor: pointer;
+}
+
+.layer-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  flex-shrink: 0;
+  width: 40px;
+}
+.layer-num {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  flex-shrink: 0;
+}
+.layer-line {
+  width: 2px;
+  flex: 1;
+  min-height: 12px;
+  margin: 3px 0;
+  border-radius: 1px;
+}
+
+.layer-card {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  margin: 2px 0 4px;
+  transition: border-color 0.15s;
+}
+.layer-item:hover .layer-card { border-color: var(--border2); }
+.layer-item.open .layer-card  { border-color: var(--border2); background: var(--bg4); }
+
+.layer-title { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 3px; }
+.layer-sub   { font-size: 13px; color: var(--text2); }
+.layer-tech  { font-family: var(--font-mono); font-size: 11px; color: var(--text3); margin-top: 6px; }
+
+.layer-detail {
+  display: none;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.65;
+  border-top: 1px solid var(--border);
+  padding-top: 10px;
+}
+.layer-item.open .layer-detail { display: block; }
+
+.l1 .layer-num { background: var(--purple-bg); color: var(--purple); }
+.l1 .layer-line { background: var(--purple-dim); }
+.l2 .layer-num  { background: var(--teal-bg); color: var(--teal); }
+.l2 .layer-line { background: var(--teal-dim); }
+.l3 .layer-num  { background: var(--amber-bg); color: var(--amber); }
+.l3 .layer-line { background: rgba(239,159,39,0.3); }
+.l4 .layer-num  { background: var(--blue-bg); color: var(--blue); }
+.l4 .layer-line { background: rgba(55,138,221,0.3); }
+.l5 .layer-num  { background: rgba(99,153,34,0.1); color: var(--green); }
+
+/* ── STREAM DEMO ───────────────────────────────────────── */
+.stream-demo {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin: 20px 0;
+}
+.stream-row {
+  display: grid;
+  grid-template-columns: 90px 1fr;
+  gap: 12px;
+  margin-bottom: 10px;
+  align-items: start;
+}
+.stream-lbl {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding-top: 9px;
+}
+.stream-box {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--text2);
+  min-height: 36px;
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── COLOR SWATCHES ────────────────────────────────────── */
+.ramp-row {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.ramp-name {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text3);
+  min-width: 52px;
+}
+.swatch {
+  height: 28px;
+  flex: 1;
+  border-radius: 4px;
+  position: relative;
+  cursor: default;
+  transition: transform 0.1s;
+}
+.swatch:hover { transform: scaleY(1.2); z-index: 1; }
+.sw-lbl {
+  position: absolute;
+  bottom: 3px;
+  left: 0; right: 0;
+  text-align: center;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  pointer-events: none;
+}
+
+/* ── VAR TABLE ─────────────────────────────────────────── */
+.var-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 13px;
+}
+.var-table th {
+  text-align: left;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.var-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+.var-table tr:last-child td { border-bottom: none; }
+.var-table td:first-child { font-family: var(--font-mono); font-size: 12px; color: var(--purple); }
+.var-table tr:hover td { background: var(--bg3); }
+
+/* ── TABS ──────────────────────────────────────────────── */
+.tabs { margin: 20px 0; }
+.tab-bar {
+  display: flex;
+  gap: 2px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.tab-btn {
+  padding: 8px 16px;
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text3);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+  margin-bottom: -1px;
+}
+.tab-btn:hover { color: var(--text2); }
+.tab-btn.active { color: var(--purple); border-bottom-color: var(--purple); }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+/* ── RULE LIST ─────────────────────────────────────────── */
+.rule-list { list-style: none; margin: 12px 0; }
+.rule-list li {
+  display: flex;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.55;
+  align-items: flex-start;
+}
+.rule-list li:last-child { border-bottom: none; }
+.rule-icon {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.ok  { background: rgba(99,153,34,0.15); color: var(--green); }
+.bad { background: rgba(216,90,48,0.15); color: var(--coral); }
+
+/* ── BLUEPRINT ─────────────────────────────────────────── */
+.bp-step {
+  display: flex;
+  gap: 14px;
+  margin-bottom: 16px;
+  align-items: flex-start;
+}
+.bp-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--purple-bg);
+  border: 1px solid var(--purple-dim);
+  color: var(--purple);
+  font-size: 12px;
+  font-weight: 600;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.bp-body h3 { font-size: 14px; margin-bottom: 4px; }
+.bp-body p  { font-size: 13px; margin: 0; }
+
+/* ── DECISION TABLE ─────────────────────────────────────── */
+.dt {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 16px 0;
+}
+.dt th {
+  text-align: left;
+  padding: 9px 14px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text3);
+  border-bottom: 1px solid var(--border2);
+}
+.dt td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+.dt tr:hover td { background: var(--bg3); }
+.dt td:first-child { color: var(--text); font-style: italic; }
+.badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 500;
+}
+.badge.svg    { background: var(--blue-bg);   color: var(--blue); }
+.badge.html   { background: var(--teal-bg);   color: var(--teal); }
+.badge.text   { background: var(--bg4);       color: var(--text3); }
+.badge.mermaid{ background: var(--amber-bg);  color: var(--amber); }
+
+/* ── BUTTON ─────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 18px;
+  background: var(--bg4);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.btn:hover { background: var(--bg3); border-color: var(--purple-dim); color: var(--purple); }
+.btn:active { transform: scale(0.98); }
+.btn.primary { background: var(--purple-bg); border-color: var(--purple-dim); color: var(--purple); }
+
+/* ── FOOTNOTE ───────────────────────────────────────────── */
+.footnote {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+  margin-top: 8px;
+}
+
+/* ── PILL TAGS ──────────────────────────────────────────── */
+.tag-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 0; }
+.tag-pill {
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  border: 1px solid var(--border);
+  color: var(--text2);
+}
+
+/* ── SCROLLBAR ──────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+
+/* ── RESPONSIVE ─────────────────────────────────────────── */
+@media (max-width: 768px) {
+  #sidebar { display: none; }
+  main { margin-left: 0; padding: 0 20px 60px; }
+  .card-grid { grid-template-columns: 1fr; }
+  .card-grid.three { grid-template-columns: 1fr; }
+}
+
+/* ── PROMPT BLOCK ────────────────────────────────────────── */
+.prompt-block {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--purple);
+  border-radius: var(--radius-sm);
+  padding: 14px 18px;
+  margin: 14px 0;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #c9c7c0;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+.prompt-block .pm-label {
+  font-size: 10px;
+  color: var(--purple);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+  display: block;
+  font-weight: 600;
+}
+.prompt-block.teal-border { border-left-color: var(--teal); }
+.prompt-block.teal-border .pm-label { color: var(--teal); }
+.prompt-block.amber-border { border-left-color: var(--amber); }
+.prompt-block.amber-border .pm-label { color: var(--amber); }
+
+/* ── TOOL SCHEMA ─────────────────────────────────────────── */
+.tool-schema {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  margin: 16px 0;
+}
+.tool-schema-header {
+  background: var(--bg3);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tool-schema-name {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--purple);
+  font-weight: 600;
+}
+.tool-schema-type {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  background: var(--bg4);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 7px;
+}
+.tool-schema pre { margin: 0; border: none; border-radius: 0; background: transparent; }
+
+/* ── STAT ROW ────────────────────────────────────────────── */
+.stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin: 20px 0;
+}
+.stat-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  text-align: center;
+}
+.stat-num {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--purple);
+  line-height: 1.1;
+  margin-bottom: 4px;
+}
+.stat-label {
+  font-size: 12px;
+  color: var(--text3);
+  font-family: var(--font-mono);
+}
+
+/* ── COMPARE TABLE ───────────────────────────────────────── */
+.compare-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+  margin: 16px 0;
+}
+.compare-table th {
+  padding: 10px 14px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  border-bottom: 1px solid var(--border2);
+  text-align: left;
+}
+.compare-table th:first-child { width: 30%; }
+.compare-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text2);
+  vertical-align: top;
+}
+.compare-table tr:hover td { background: var(--bg3); }
+.compare-table td:first-child { color: var(--text); font-weight: 500; }
+.compare-table td.good { color: var(--green); }
+.compare-table td.bad  { color: var(--coral); }
+
+/* ── ACCORDION ───────────────────────────────────────────── */
+.accordion { margin: 16px 0; }
+.acc-item {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+.acc-item:hover { border-color: var(--border2); }
+.acc-item.open  { border-color: var(--purple-dim); }
+.acc-trigger {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  cursor: pointer;
+  background: var(--bg3);
+  user-select: none;
+}
+.acc-item.open .acc-trigger { background: var(--bg4); }
+.acc-trigger-title { font-size: 13px; font-weight: 600; color: var(--text); }
+.acc-trigger-sub { font-size: 12px; color: var(--text3); margin-top: 2px; }
+.acc-arrow {
+  font-size: 10px;
+  color: var(--text3);
+  transition: transform 0.2s;
+  flex-shrink: 0;
+  margin-left: 12px;
+}
+.acc-item.open .acc-arrow { transform: rotate(180deg); color: var(--purple); }
+.acc-body {
+  display: none;
+  padding: 14px 16px;
+  font-size: 13px;
+  color: var(--text2);
+  line-height: 1.7;
+  border-top: 1px solid var(--border);
+}
+.acc-item.open .acc-body { display: block; }
+
+/* ── AGENT LOOP DIAGRAM ──────────────────────────────────── */
+.agent-loop {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin: 20px 0;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.agent-node {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  text-align: center;
+  min-width: 100px;
+  flex-shrink: 0;
+}
+.agent-node .an-label { font-size: 11px; font-weight: 600; color: var(--text); }
+.agent-node .an-sub   { font-size: 10px; color: var(--text3); font-family: var(--font-mono); margin-top: 2px; }
+.agent-node.purple-node { border-color: var(--purple-dim); background: var(--purple-bg); }
+.agent-node.purple-node .an-label { color: var(--purple); }
+.agent-node.teal-node { border-color: var(--teal-dim); background: var(--teal-bg); }
+.agent-node.teal-node .an-label { color: var(--teal); }
+.agent-node.amber-node { border-color: rgba(239,159,39,0.3); background: var(--amber-bg); }
+.agent-node.amber-node .an-label { color: var(--amber); }
+.agent-arrow {
+  font-size: 16px;
+  color: var(--text3);
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+
+/* ── SECTION EXTRA STYLES ─────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
+}
+.mini-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 8px;
+}
+.highlight-box {
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 16px 20px;
+  margin: 16px 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="mark">How Claude<br>Visuals Work</div>
+    <div class="sub">complete technical guide</div>
+  </div>
+  <nav id="nav">
+    <a href="#overview"   class="active"><span class="nav-num">01</span>Overview</a>
+    <a href="#decision"            ><span class="nav-num">02</span>Decision Logic</a>
+    <a href="#code"                ><span class="nav-num">03</span>The Code</a>
+    <a href="#pipeline"            ><span class="nav-num">04</span>Rendering Pipeline</a>
+    <a href="#design-system"       ><span class="nav-num">05</span>Design System</a>
+    <a href="#build"               ><span class="nav-num">06</span>Build Your Own</a>
+    <a href="#agent"               ><span class="nav-num">07</span>Agentic System</a>
+    <a href="#prompts"             ><span class="nav-num">08</span>Learner Prompts</a>
+  </nav>
+  <div class="sidebar-footer">claude.ai · for learners · v2</div>
+</aside>
+
+<!-- ═══════════════════════ MAIN ═══════════════════════════ -->
+<main>
+
+<!-- ──── SECTION 1: OVERVIEW ──────────────────────────── -->
+<section id="overview">
+  <div class="section-eyebrow">01 — Overview</div>
+  <h1>Not images.<br>Living code.</h1>
+  <p class="lead">Every visual you see in claude.ai — diagrams, interactive charts, animated explainers — is raw SVG markup or an HTML fragment written by the model and rendered natively by your browser. No image generation model is involved at any step.</p>
+
+  <div class="callout purple">
+    <div class="callout-title">The core insight</div>
+    <p style="margin:0;font-size:14px">Claude generates <span class="inline-code">&lt;svg&gt;</span> and <span class="inline-code">&lt;iframe srcdoc&gt;</span> the same way it generates Python or JSON — as structured text. The browser paints the result. Quality comes entirely from the precision of the coordinate math and design logic inside the generated code.</p>
+  </div>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-label">What they are</div>
+      <h3>SVG markup or HTML fragments</h3>
+      <p>Raw browser-native code. No canvas API, no image generation, no external rendering service.</p>
+    </div>
+    <div class="card">
+      <div class="card-label">How they stream</div>
+      <h3>Token by token over SSE</h3>
+      <p>The response streams as a server-sent events connection. The frontend accumulates the tool call block before rendering.</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Where they run</div>
+      <h3>Sandboxed iframe</h3>
+      <p>Set as <span class="inline-code">srcdoc</span> of an iframe with strict sandbox flags — no access to parent page cookies, localStorage, or DOM.</p>
+    </div>
+    <div class="card">
+      <div class="card-label">How theming works</div>
+      <h3>CSS variables injected by parent</h3>
+      <p>The parent page injects a stylesheet defining all color variables and class definitions. Dark mode is automatic.</p>
+    </div>
+  </div>
+
+  <div class="callout teal">
+    <div class="callout-title">Why this matters for your learning companion</div>
+    <p style="margin:0;font-size:14px">Every mechanism described in this guide is fully reproducible with the Anthropic API. You call the model, parse the code output, render it in a sandboxed <span class="inline-code">&lt;iframe srcdoc&gt;</span>, inject your own CSS variables, and expose a <span class="inline-code">sendPrompt()</span> bridge. No proprietary claude.ai APIs required.</p>
+  </div>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:14px">Why not image generation?</h3>
+  <table class="compare-table">
+    <thead><tr><th>Dimension</th><th>Image generation (DALL·E, etc.)</th><th>Claude living code (SVG/HTML)</th></tr></thead>
+    <tbody>
+      <tr><td>Output format</td><td class="bad">Raster PNG/JPG — pixels</td><td class="good">Vector SVG or DOM — infinitely scalable</td></tr>
+      <tr><td>Interactivity</td><td class="bad">None — static bitmap</td><td class="good">Full JS, sliders, animations, sendPrompt()</td></tr>
+      <tr><td>Dark mode</td><td class="bad">Requires re-generation</td><td class="good">Automatic via CSS variables</td></tr>
+      <tr><td>Accessibility</td><td class="bad">Alt text only</td><td class="good">Native ARIA, keyboard nav, screen readers</td></tr>
+      <tr><td>Editability</td><td class="bad">Cannot change a color without re-gen</td><td class="good">JS can mutate any SVG attribute live</td></tr>
+      <tr><td>Latency</td><td class="bad">2–10 seconds for generation</td><td class="good">Streams token-by-token, loads as it arrives</td></tr>
+      <tr><td>Click-to-learn</td><td class="bad">Impossible — flat image</td><td class="good">onclick="sendPrompt(...)" on every node</td></tr>
+      <tr><td>Cost</td><td class="bad">Separate image model API cost</td><td class="good">Zero extra cost — just text tokens</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:14px">Scale of what's possible</h3>
+  <div class="stat-row">
+    <div class="stat-card">
+      <div class="stat-num">9</div>
+      <div class="stat-label">color ramps<br>× 7 stops each</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">12+</div>
+      <div class="stat-label">CDN libraries<br>available in widgets</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-num">0px</div>
+      <div class="stat-label">extra latency<br>vs plain text response</div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:10px">The agent loop — how visuals fit multi-turn learning</h3>
+  <p>In an agentic learning companion, visuals are not one-shot outputs. Every click on a diagram node triggers a new user message, which re-enters the model, which may generate another visual — creating a recursive loop of understanding.</p>
+  <div class="agent-loop">
+    <div class="agent-node purple-node"><div class="an-label">Learner asks</div><div class="an-sub">natural language</div></div>
+    <div class="agent-arrow">→</div>
+    <div class="agent-node"><div class="an-label">Model reasons</div><div class="an-sub">visual type + code</div></div>
+    <div class="agent-arrow">→</div>
+    <div class="agent-node teal-node"><div class="an-label">Widget renders</div><div class="an-sub">iframe srcdoc</div></div>
+    <div class="agent-arrow">→</div>
+    <div class="agent-node amber-node"><div class="an-label">Learner clicks node</div><div class="an-sub">sendPrompt()</div></div>
+    <div class="agent-arrow">→</div>
+    <div class="agent-node purple-node"><div class="an-label">Deeper question</div><div class="an-sub">loops back</div></div>
+  </div>
+  <p style="font-size:13px">This is the pedagogical breakthrough: the visual is not the end of the explanation, it's the start of a dialogue. A learner who clicks "What does the dip tube do?" inside a water heater diagram gets an answer tailored to exactly what they're looking at — with the diagram context still in the conversation window.</p>
+</section>
+
+<!-- ──── SECTION 2: DECISION LOGIC ────────────────────── -->
+<section id="decision">
+  <div class="section-eyebrow">02 — Decision Logic</div>
+  <h2>How Claude decides what to generate</h2>
+  <p class="lead">The routing decision runs through four questions in strict order. The first match wins — subsequent checks are skipped.</p>
+
+  <div class="layer-list" id="decision-layers">
+
+    <div class="layer-item l1" onclick="toggleLayer(this)">
+      <div class="layer-left">
+        <div class="layer-num">1</div>
+        <div class="layer-line"></div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-title">Is a connected MCP tool a fit?</div>
+        <div class="layer-sub">If a connected server (Figma, Amplitude, Hex…) handles the request category → use it. Category match beats aesthetic preference.</div>
+        <div class="layer-tech">e.g. "diagram" + Figma connected → call Figma, not the inline renderer</div>
+        <div class="layer-detail">This is the highest-priority rule. If the user has connected Figma and asks for a diagram, Claude calls Figma — even if the Visualizer could draw something "more illustrative." The user chose to connect that tool. Named servers (explicitly mentioned in the request) are the absolute routing path with no exceptions. An MCP tool failure is reported, not silently substituted.</div>
+      </div>
+    </div>
+
+    <div class="layer-item l2" onclick="toggleLayer(this)">
+      <div class="layer-left">
+        <div class="layer-num">2</div>
+        <div class="layer-line"></div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-title">Did the user ask for a file or Artifact?</div>
+        <div class="layer-sub">Keywords: "Artifact", "file", "download", "save as" → produce a downloadable file regardless of content type.</div>
+        <div class="layer-tech">"Show me an Artifact of a green triangle" → file, not inline visual</div>
+        <div class="layer-detail">The word "Artifact" or "file" overrides everything else — even if the content is trivially visualizer-shaped (a bar chart, a simple SVG). The user is explicitly routing to the persistent-file path. "Show me" is a visualizer trigger phrase, but "Artifact" wins.</div>
+      </div>
+    </div>
+
+    <div class="layer-item l3" onclick="toggleLayer(this)">
+      <div class="layer-left">
+        <div class="layer-num">3</div>
+        <div class="layer-line"></div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-title">Would a visual genuinely help?</div>
+        <div class="layer-sub">If the task is writing code, drafting an email, answering a factual question, or casual chat → plain text. Visuals only for spatial/relational understanding.</div>
+        <div class="layer-tech">No visual: code help, simple Q&amp;A, summaries, analysis. Visual: concepts, processes, systems, comparisons</div>
+        <div class="layer-detail">The test is whether a picture would help a person understand something they couldn't grasp as well from text alone. "What is photosynthesis?" benefits from a diagram of the mechanism. "What year did photosynthesis evolve?" does not. When in doubt, Claude errs toward visual for anything with spatial, sequential, or relational structure.</div>
+      </div>
+    </div>
+
+    <div class="layer-item l4" onclick="toggleLayer(this)">
+      <div class="layer-left">
+        <div class="layer-num">4</div>
+        <div class="layer-line"></div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-title">Does it need interactivity?</div>
+        <div class="layer-sub">Controls, sliders, animations, step-through sequences, live calculations → HTML + JS. Static explanatory diagram → SVG.</div>
+        <div class="layer-tech">HTML: steppers, charts, calculators, simulations. SVG: flowcharts, structural diagrams, cross-sections</div>
+        <div class="layer-detail">The decision rule: does the real system have a control? A water heater has a thermostat — give the diagram a slider. An LLM has input tokens — let the user click one and watch attention weights change. A cache has a hit rate — drag it and watch latency change. If there's something to twiddle, make it twiddlable. Only fall back to static SVG when there's genuinely nothing interactive.</div>
+      </div>
+    </div>
+
+    <div class="layer-item" onclick="toggleLayer(this)" style="cursor:pointer">
+      <div class="layer-left">
+        <div class="layer-num" style="background:rgba(99,153,34,0.1);color:#639922;">5</div>
+      </div>
+      <div class="layer-card">
+        <div class="layer-title">Which type of SVG diagram?</div>
+        <div class="layer-sub">Route on intent, not subject. "Document this" → flowchart/structural. "Understand this" → illustrative.</div>
+        <div class="layer-tech">Flowchart: steps/decisions. Structural: containment. Illustrative: mechanisms/metaphors. ERD: Mermaid.js</div>
+        <div class="layer-detail">The most nuanced call. Same subject can produce different diagrams: "transformer architecture" → structural (labelled boxes). "how does attention work" → illustrative (fan of weighted lines between tokens). "how does a hash map work" → illustrative (key falling through funnel into buckets). The illustrative route is the ambitious default for "how does X work" — don't fall back to a flowchart because it's safer.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <h3 style="margin-top:32px;margin-bottom:12px">Routing examples</h3>
+  <table class="dt">
+    <thead><tr><th>User says</th><th>Type</th><th>Reasoning</th></tr></thead>
+    <tbody>
+      <tr><td>"explain gradient descent"</td><td><span class="badge html">HTML</span></td><td>Has a control (learning rate slider). Interactive illustrative.</td></tr>
+      <tr><td>"transformer architecture"</td><td><span class="badge svg">SVG</span> structural</td><td>User wants a reference map, not an intuition.</td></tr>
+      <tr><td>"how does attention work"</td><td><span class="badge svg">SVG</span> illustrative</td><td>Mechanism diagram: token fan, opacity = weight.</td></tr>
+      <tr><td>"what are the training steps"</td><td><span class="badge svg">SVG</span> flowchart</td><td>Sequential process, user wants to follow steps.</td></tr>
+      <tr><td>"draw the database schema"</td><td><span class="badge mermaid">Mermaid</span></td><td>ERD routing — connector layout too complex for hand-coded SVG.</td></tr>
+      <tr><td>"explain how the Krebs cycle works"</td><td><span class="badge html">HTML</span> stepper</td><td>Cyclic process — rings collide. Stepper per stage.</td></tr>
+      <tr><td>"what is recursion"</td><td><span class="badge svg">SVG</span> illustrative</td><td>Call stack as a literal stack of frames, growing and shrinking.</td></tr>
+      <tr><td>"help me write this email"</td><td><span class="badge text">plain text</span></td><td>No spatial structure. Visual adds nothing.</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Learner-platform routing in practice</h3>
+  <p>For an educational agent, the routing above is too generic. These are the subject-specific routing rules that produce the highest learning gain:</p>
+
+  <div class="accordion" id="routing-accordion">
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Mathematics &amp; calculus</div><div class="acc-trigger-sub">derivatives, integrals, series, limits</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p><strong style="color:var(--text)">Default:</strong> HTML with a live graph (Chart.js or D3) that responds to a slider. "Explain what a derivative is" → animated tangent line that moves along a curve as the user drags a point. The visual shows the limit process.</p>
+        <p><strong style="color:var(--text)">Avoid:</strong> Static SVG with a fixed curve. It documents the result but doesn't show the mechanism of approximation.</p>
+        <p><strong style="color:var(--text)">Prompt signal:</strong> Any phrase containing "as x approaches", "rate of change", "area under", "converges to" → reach for interactive HTML, not static SVG.</p>
+        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"I don't understand why the derivative of sin(x) is cos(x). Can you show me?"
+→ HTML widget: animated unit circle + tangent line slider + live dy/dx readout</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Computer science &amp; algorithms</div><div class="acc-trigger-sub">sorting, trees, graphs, memory, pointers</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p><strong style="color:var(--text)">Default:</strong> HTML stepper for algorithms (one step per click, array/tree redraws in SVG inside the stepper). "Show me how bubble sort works" → array of colored bars, step button highlights the comparison, bars swap with a smooth transition.</p>
+        <p><strong style="color:var(--text)">Memory / pointers:</strong> Illustrative SVG — boxes connected by literal arrow lines. A stack frame IS a rectangle. A pointer IS an arrow. Draw it.</p>
+        <p><strong style="color:var(--text)">Trees &amp; graphs:</strong> SVG structural diagram with c-purple nodes and thin lines. Node click → sendPrompt about that traversal step.</p>
+        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"Explain how quicksort partitions an array step by step"
+→ HTML stepper: colored array, pivot highlighted in amber, left/right pointers moving, partition line drawing</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Physics &amp; chemistry</div><div class="acc-trigger-sub">forces, waves, reactions, molecular structure</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p><strong style="color:var(--text)">Forces &amp; motion:</strong> HTML with animated SVG. Show the vector as a colored arrow that scales with a slider. "What happens to acceleration when mass doubles?" → both variables are live.</p>
+        <p><strong style="color:var(--text)">Waves:</strong> HTML + Canvas or SVG path animation. Frequency and amplitude sliders. The wave redraws on every input event.</p>
+        <p><strong style="color:var(--text)">Molecular structure:</strong> Illustrative SVG with hardcoded physical colors (atom color conventions are universal — oxygen is red, hydrogen is white, carbon is black/gray). These must be hardcoded, not CSS variables, because they should not invert in dark mode.</p>
+        <p><strong style="color:var(--text)">Chemical reactions:</strong> HTML stepper showing reactants → transition state → products, with color transitions showing bond formation/breaking.</p>
+        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"Show me how a sine wave changes when I increase frequency vs amplitude"
+→ HTML: canvas path, two range sliders (frequency 1–10Hz, amplitude 0.1–2), live redraw at 60fps</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Machine learning &amp; AI</div><div class="acc-trigger-sub">neural nets, training, embeddings, attention</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p><strong style="color:var(--text)">Neural network structure:</strong> SVG structural diagram — layers as columns of circles, weights as thin lines. Color encodes activation intensity (amber = high, gray = low).</p>
+        <p><strong style="color:var(--text)">Training process:</strong> HTML with Chart.js — live loss curve that animates downward as the "training" slider moves. Add a learning rate control to show overshooting.</p>
+        <p><strong style="color:var(--text)">Attention:</strong> Illustrative SVG — token row at bottom, one highlighted in amber, lines fanning up with stroke-width encoding weight. Make it interactive: click any token to become the query.</p>
+        <p><strong style="color:var(--text)">Embeddings:</strong> D3 scatter plot in HTML — words as dots in 2D projection, clusters visible. Hover shows the word, similar words cluster together.</p>
+        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"I don't understand what attention weights actually represent"
+→ SVG illustrative: 5-token row, one amber "query" token, 5 fan lines with stroke-width and opacity = weight,
+   caption below: "thickness = how much 'sat' attends to each other token"</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Biology &amp; medicine</div><div class="acc-trigger-sub">cells, physiology, genetics, anatomy</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p><strong style="color:var(--text)">Cell biology:</strong> SVG structural diagram — dashed outer membrane, labeled organelles as colored regions inside. Click any organelle → sendPrompt about its function.</p>
+        <p><strong style="color:var(--text)">Physiological processes (heart, lungs, kidneys):</strong> Illustrative SVG cross-section with physical colors. Animate fluid flow with CSS stroke-dasharray animation. A beating heart is 3 keyframes.</p>
+        <p><strong style="color:var(--text)">Genetics / DNA:</strong> Illustrative SVG — double helix shown as two parallel strands with rungs. Base pairs color-coded (A-T: amber, G-C: teal). Unzip animation in HTML.</p>
+        <p><strong style="color:var(--text)">Drug mechanisms:</strong> HTML stepper — receptor + molecule approaching, binding, conformational change, downstream effect. Each step is a panel.</p>
+        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"Explain how the immune system responds to a pathogen"
+→ HTML stepper: 5 stages (detection → APC activation → T-cell proliferation → antibody production → memory cells),
+   each panel has SVG illustration + 2-line explanation</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="callout purple" style="margin-top:20px">
+    <div class="callout-title">The pedagogical routing rule</div>
+    <p style="margin:0;font-size:14px">Ask: does the learner need to <em>document</em> something or <em>feel</em> how it works? Documentation → flowchart/structural SVG. Feeling → illustrative SVG or interactive HTML. When in doubt, reach for the interactive version — a diagram you can operate creates 3× the recall of one you passively view.</p>
+  </div>
+</section>
+
+<!-- ──── SECTION 3: THE CODE ───────────────────────────── -->
+<section id="code">
+  <div class="section-eyebrow">03 — The Code</div>
+  <h2>What Claude actually writes</h2>
+  <p class="lead">Claude generates raw SVG markup or HTML fragments. Here is the exact anatomy of each output type, with every structural decision explained.</p>
+
+  <div class="tabs">
+    <div class="tab-bar">
+      <button class="tab-btn active" onclick="switchTab('svg-tab', this)">Pure SVG</button>
+      <button class="tab-btn"        onclick="switchTab('html-tab', this)">HTML + JS widget</button>
+      <button class="tab-btn"        onclick="switchTab('rules-tab', this)">Hard constraints</button>
+      <button class="tab-btn"        onclick="switchTab('tool-tab', this)">Tool definition</button>
+    </div>
+
+    <div id="svg-tab" class="tab-panel active">
+      <p>SVG is used for static diagrams, flowcharts, structural diagrams, and illustrative cross-sections. Every element has precise coordinates — the model calculates them from scratch.</p>
+<pre><span class="cm">/* The viewBox is always 680 wide — load-bearing. */</span>
+<span class="cm">/* 1 SVG unit = 1 CSS pixel at the 680px container. */</span>
+<span class="tag">&lt;svg</span> <span class="attr">width</span>=<span class="str">"100%"</span> <span class="attr">viewBox</span>=<span class="str">"0 0 680 220"</span><span class="tag">&gt;</span>
+
+  <span class="cm">/* Arrow marker — always first in defs. */</span>
+  <span class="cm">/* context-stroke makes the arrowhead inherit the line's color. */</span>
+  <span class="tag">&lt;defs&gt;</span>
+    <span class="tag">&lt;marker</span> <span class="attr">id</span>=<span class="str">"arrow"</span> <span class="attr">viewBox</span>=<span class="str">"0 0 10 10"</span> <span class="attr">refX</span>=<span class="str">"8"</span> <span class="attr">refY</span>=<span class="str">"5"</span>
+             <span class="attr">markerWidth</span>=<span class="str">"6"</span> <span class="attr">markerHeight</span>=<span class="str">"6"</span> <span class="attr">orient</span>=<span class="str">"auto-start-reverse"</span><span class="tag">&gt;</span>
+      <span class="tag">&lt;path</span> <span class="attr">d</span>=<span class="str">"M2 1L8 5L2 9"</span> <span class="attr">fill</span>=<span class="str">"none"</span> <span class="attr">stroke</span>=<span class="str">"context-stroke"</span>
+            <span class="attr">stroke-width</span>=<span class="str">"1.5"</span> <span class="attr">stroke-linecap</span>=<span class="str">"round"</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;/marker&gt;</span>
+  <span class="tag">&lt;/defs&gt;</span>
+
+  <span class="cm">/* c-blue = CSS class injected by parent. Handles fill, stroke, */</span>
+  <span class="cm">/* text color, AND dark mode automatically. Never hardcode hex. */</span>
+  <span class="cm">/* node = clickable group with built-in hover effect. */</span>
+  <span class="tag">&lt;g</span> <span class="attr">class</span>=<span class="str">"node c-blue"</span> <span class="attr">onclick</span>=<span class="str">"sendPrompt('Tell me more about Input')"</span><span class="tag">&gt;</span>
+    <span class="cm">/* Box width = max(title_chars × 8, subtitle_chars × 7) + 24 */</span>
+    <span class="tag">&lt;rect</span> <span class="attr">x</span>=<span class="str">"60"</span> <span class="attr">y</span>=<span class="str">"80"</span> <span class="attr">width</span>=<span class="str">"160"</span> <span class="attr">height</span>=<span class="str">"56"</span>
+          <span class="attr">rx</span>=<span class="str">"8"</span> <span class="attr">stroke-width</span>=<span class="str">"0.5"</span><span class="tag">/&gt;</span>
+    <span class="cm">/* dominant-baseline="central" centers text on y — required. */</span>
+    <span class="tag">&lt;text</span> <span class="attr">class</span>=<span class="str">"th"</span> <span class="attr">x</span>=<span class="str">"140"</span> <span class="attr">y</span>=<span class="str">"100"</span>
+          <span class="attr">text-anchor</span>=<span class="str">"middle"</span> <span class="attr">dominant-baseline</span>=<span class="str">"central"</span><span class="tag">&gt;</span>Input<span class="tag">&lt;/text&gt;</span>
+    <span class="tag">&lt;text</span> <span class="attr">class</span>=<span class="str">"ts"</span> <span class="attr">x</span>=<span class="str">"140"</span> <span class="attr">y</span>=<span class="str">"120"</span>
+          <span class="attr">text-anchor</span>=<span class="str">"middle"</span> <span class="attr">dominant-baseline</span>=<span class="str">"central"</span><span class="tag">&gt;</span>tokenized text<span class="tag">&lt;/text&gt;</span>
+  <span class="tag">&lt;/g&gt;</span>
+
+  <span class="cm">/* Connector — must not cross any other box interior. */</span>
+  <span class="cm">/* If it would, use L-bend: M x1 y1 L x1 ymid L x2 ymid L x2 y2 */</span>
+  <span class="tag">&lt;line</span> <span class="attr">x1</span>=<span class="str">"220"</span> <span class="attr">y1</span>=<span class="str">"108"</span> <span class="attr">x2</span>=<span class="str">"298"</span> <span class="attr">y2</span>=<span class="str">"108"</span>
+        <span class="attr">class</span>=<span class="str">"arr"</span> <span class="attr">marker-end</span>=<span class="str">"url(#arrow)"</span><span class="tag">/&gt;</span>
+
+  <span class="tag">&lt;g</span> <span class="attr">class</span>=<span class="str">"node c-teal"</span> <span class="attr">onclick</span>=<span class="str">"sendPrompt('How does the model process?')"</span><span class="tag">&gt;</span>
+    <span class="tag">&lt;rect</span> <span class="attr">x</span>=<span class="str">"300"</span> <span class="attr">y</span>=<span class="str">"80"</span> <span class="attr">width</span>=<span class="str">"160"</span> <span class="attr">height</span>=<span class="str">"56"</span> <span class="attr">rx</span>=<span class="str">"8"</span> <span class="attr">stroke-width</span>=<span class="str">"0.5"</span><span class="tag">/&gt;</span>
+    <span class="tag">&lt;text</span> <span class="attr">class</span>=<span class="str">"th"</span> <span class="attr">x</span>=<span class="str">"380"</span> <span class="attr">y</span>=<span class="str">"100"</span> <span class="attr">text-anchor</span>=<span class="str">"middle"</span>
+          <span class="attr">dominant-baseline</span>=<span class="str">"central"</span><span class="tag">&gt;</span>Processing<span class="tag">&lt;/text&gt;</span>
+  <span class="tag">&lt;/g&gt;</span>
+
+<span class="tag">&lt;/svg&gt;</span></pre>
+
+      <h3 style="margin-top:20px">Pre-built CSS classes (injected by parent)</h3>
+      <div class="card-grid three" style="margin-top:10px">
+        <div class="card"><div class="card-label">color classes</div><p style="font-family:var(--font-mono);font-size:12px;margin:0">c-blue, c-teal, c-purple, c-amber, c-coral, c-green, c-red, c-pink, c-gray</p></div>
+        <div class="card"><div class="card-label">text classes</div><p style="font-family:var(--font-mono);font-size:12px;margin:0">class="th" → 14px/500<br>class="t" → 14px/400<br>class="ts" → 12px/400</p></div>
+        <div class="card"><div class="card-label">utility classes</div><p style="font-family:var(--font-mono);font-size:12px;margin:0">node → hover + cursor<br>arr → 1.5px arrow line<br>box → neutral fill/border<br>leader → dashed line</p></div>
+      </div>
+    </div>
+
+    <div id="html-tab" class="tab-panel">
+      <p>HTML + JS is used for interactive widgets — anything with sliders, buttons, step-through controls, animations, or external library charts. The entire fragment streams as <span class="inline-code">srcdoc</span> content.</p>
+<pre><span class="cm">/* Order: style → content HTML → CDN script → logic script */</span>
+<span class="cm">/* This order ensures content is visible before JS loads. */</span>
+<span class="cm">/* No DOCTYPE, no &lt;html&gt;, no &lt;head&gt;, no &lt;body&gt; tags. */</span>
+
+<span class="tag">&lt;style&gt;</span>
+  <span class="cm">/* Always use CSS variables — never hardcode colors. */</span>
+  <span class="cm">/* These are injected by the parent page into the iframe. */</span>
+  <span class="fn">button</span> {
+    <span class="attr">background</span>: <span class="fn">var</span>(<span class="str">--color-background-secondary</span>);
+    <span class="attr">color</span>: <span class="fn">var</span>(<span class="str">--color-text-primary</span>);
+    <span class="attr">border</span>: <span class="val">0.5px</span> solid <span class="fn">var</span>(<span class="str">--color-border-secondary</span>);
+    <span class="attr">border-radius</span>: <span class="fn">var</span>(<span class="str">--border-radius-md</span>);
+    <span class="attr">padding</span>: <span class="val">8px 16px</span>;
+    <span class="attr">font-family</span>: <span class="fn">var</span>(<span class="str">--font-sans</span>);
+    <span class="attr">cursor</span>: <span class="val">pointer</span>;
+  }
+  <span class="fn">#output</span> { <span class="attr">color</span>: <span class="fn">var</span>(<span class="str">--color-text-secondary</span>); <span class="attr">font-size</span>: <span class="val">13px</span>; }
+<span class="tag">&lt;/style&gt;</span>
+
+<span class="cm">/* Content HTML first — visible while scripts load */</span>
+<span class="tag">&lt;div</span> <span class="attr">style</span>=<span class="str">"padding: 1rem 0"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;label</span> <span class="attr">style</span>=<span class="str">"font-size:13px; color:var(--color-text-secondary)"</span><span class="tag">&gt;</span>
+    Learning rate
+  <span class="tag">&lt;/label&gt;</span>
+  <span class="cm">/* Range slider pre-styled by parent CSS */</span>
+  <span class="tag">&lt;input</span> <span class="attr">type</span>=<span class="str">"range"</span> <span class="attr">id</span>=<span class="str">"lr"</span> <span class="attr">min</span>=<span class="str">"1"</span> <span class="attr">max</span>=<span class="str">"100"</span> <span class="attr">value</span>=<span class="str">"10"</span>
+         <span class="attr">oninput</span>=<span class="str">"update(this.value)"</span><span class="tag">/&gt;</span>
+  <span class="tag">&lt;div</span> <span class="attr">id</span>=<span class="str">"output"</span><span class="tag">&gt;</span>value: 0.10<span class="tag">&lt;/div&gt;</span>
+
+  <span class="cm">/* sendPrompt() bridge — fires a message into the chat */</span>
+  <span class="tag">&lt;button</span> <span class="attr">onclick</span>=<span class="str">"sendPrompt('What happens if learning rate is too high?')"</span><span class="tag">&gt;</span>
+    Ask about this ↗
+  <span class="tag">&lt;/button&gt;</span>
+<span class="tag">&lt;/div&gt;</span>
+
+<span class="cm">/* CDN-loaded library (allowed: cdnjs, esm.sh, jsdelivr, unpkg) */</span>
+<span class="tag">&lt;script</span> <span class="attr">src</span>=<span class="str">"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"</span><span class="tag">&gt;&lt;/script&gt;</span>
+
+<span class="cm">/* Logic script — uses CDN global, runs after full stream */</span>
+<span class="tag">&lt;script&gt;</span>
+  <span class="kw">function</span> <span class="fn">update</span>(v) {
+    <span class="cm">// Always round displayed numbers — JS float math leaks</span>
+    document.getElementById(<span class="str">'output'</span>).textContent =
+      <span class="str">`value: ${(v/100).toFixed(2)}`</span>;
+  }
+  <span class="cm">// State lives in JS variables — no localStorage (sandbox blocks it)</span>
+  <span class="kw">let</span> step = <span class="val">0</span>;
+<span class="tag">&lt;/script&gt;</span></pre>
+
+      <div class="callout amber">
+        <div class="callout-title">The sendPrompt() bridge</div>
+        <p style="margin:0;font-size:13px">Injected by the parent as: <span class="inline-code">window.sendPrompt = text => parent.postMessage({type:'prompt', text}, '*')</span>. This is the <em>only</em> communication channel between the widget and the chat. The parent listens via <span class="inline-code">window.addEventListener('message',...)</span> and injects the text as a new user message. No fetch, no WebSocket — just postMessage across the iframe boundary.</p>
+      </div>
+    </div>
+
+    <div id="rules-tab" class="tab-panel">
+      <p>These are the absolute constraints the generated code must respect. Violating them produces invisible text, broken layouts, or security issues.</p>
+      <ul class="rule-list">
+        <li><div class="rule-icon ok">✓</div><div><span class="inline-code">viewBox="0 0 680 H"</span> — always 680 wide. Changes rescale all coordinates and fonts.</div></li>
+        <li><div class="rule-icon ok">✓</div><div><span class="inline-code">color: var(--color-text-primary)</span> — CSS variables resolve for light AND dark mode.</div></li>
+        <li><div class="rule-icon bad">✗</div><div><span class="inline-code">color: #333</span> — hardcoded hex. Invisible on dark background.</div></li>
+        <li><div class="rule-icon ok">✓</div><div><span class="inline-code">class="c-blue"</span> on SVG group — fill, stroke, text, dark mode all handled automatically.</div></li>
+        <li><div class="rule-icon bad">✗</div><div><span class="inline-code">fill="#E6F1FB"</span> on SVG rect — blue-50 in light mode, wrong in dark mode.</div></li>
+        <li><div class="rule-icon bad">✗</div><div><span class="inline-code">localStorage.setItem(...)</span> — blocked by sandbox. State lives in JS variables only.</div></li>
+        <li><div class="rule-icon bad">✗</div><div><span class="inline-code">position: fixed</span> — iframe sizes to content height. Fixed elements don't contribute, collapsing iframe to minimum.</div></li>
+        <li><div class="rule-icon bad">✗</div><div>No <span class="inline-code">&lt;!DOCTYPE&gt;</span>, <span class="inline-code">&lt;html&gt;</span>, <span class="inline-code">&lt;head&gt;</span>, or <span class="inline-code">&lt;body&gt;</span> — fragments only, inside a parent document.</div></li>
+        <li><div class="rule-icon bad">✗</div><div>No <span class="inline-code">&lt;!-- comments --&gt;</span> or <span class="inline-code">/* comments */</span> — waste tokens, slow streaming.</div></li>
+        <li><div class="rule-icon ok">✓</div><div>SVG text must have <span class="inline-code">dominant-baseline="central"</span> — without it, y is the baseline, not the visual center.</div></li>
+        <li><div class="rule-icon ok">✓</div><div>Connector <span class="inline-code">&lt;path&gt;</span> elements must have <span class="inline-code">fill="none"</span> — SVG defaults to black fill, making paths into blobs.</div></li>
+        <li><div class="rule-icon ok">✓</div><div>CDN: only <span class="inline-code">cdnjs.cloudflare.com</span>, <span class="inline-code">esm.sh</span>, <span class="inline-code">cdn.jsdelivr.net</span>, <span class="inline-code">unpkg.com</span> — CSP blocks all others silently.</div></li>
+        <li><div class="rule-icon ok">✓</div><div>Box width = <span class="inline-code">max(title_chars × 8, subtitle_chars × 7) + 24</span> — must be computed before drawing, never guessed.</div></li>
+        <li><div class="rule-icon bad">✗</div><div>SVG text never auto-wraps. Every line break needs an explicit <span class="inline-code">&lt;tspan x="..." dy="1.2em"&gt;</span>.</div></li>
+      </ul>
+    </div>
+
+    <div id="tool-tab" class="tab-panel">
+      <p>This is the actual tool definition Claude receives in its system context that enables the <span class="inline-code">show_widget</span> tool call. When you build your own agent, you register an equivalent tool with the Anthropic API. The model then decides when to call it and fills in the parameters.</p>
+
+      <div class="tool-schema">
+        <div class="tool-schema-header">
+          <span class="tool-schema-name">show_widget</span>
+          <span class="tool-schema-type">tool definition · JSON Schema</span>
+        </div>
+<pre><span class="kw">{</span>
+  <span class="str">"name"</span>: <span class="str">"show_widget"</span>,
+  <span class="str">"description"</span>: <span class="str">"Show visual content — SVG diagrams or interactive HTML widgets
+  — that renders inline in the conversation. Use for flowcharts,
+  architecture diagrams, dashboards, calculators, data tables,
+  illustrations, or any visual content."</span>,
+  <span class="str">"input_schema"</span>: <span class="kw">{</span>
+    <span class="str">"type"</span>: <span class="str">"object"</span>,
+    <span class="str">"properties"</span>: <span class="kw">{</span>
+      <span class="str">"title"</span>: <span class="kw">{</span>
+        <span class="str">"type"</span>: <span class="str">"string"</span>,
+        <span class="str">"description"</span>: <span class="str">"Short snake_case identifier for this visual.
+        Specific and disambiguating — e.g. 'gradient_descent_loss_surface'
+        not 'chart'. Also used as the download filename."</span>
+      <span class="kw">}</span>,
+      <span class="str">"loading_messages"</span>: <span class="kw">{</span>
+        <span class="str">"type"</span>: <span class="str">"array"</span>,
+        <span class="str">"items"</span>: <span class="kw">{ "type": "string" }</span>,
+        <span class="str">"minItems"</span>: <span class="val">1</span>,
+        <span class="str">"maxItems"</span>: <span class="val">4</span>,
+        <span class="str">"description"</span>: <span class="str">"1–4 messages shown while the visual renders.
+        Roughly 5 words each. Make them playful and context-aware:
+        ['Drawing the loss surface', 'Rolling the ball downhill']"</span>
+      <span class="kw">}</span>,
+      <span class="str">"widget_code"</span>: <span class="kw">{</span>
+        <span class="str">"type"</span>: <span class="str">"string"</span>,
+        <span class="str">"description"</span>: <span class="str">"SVG or HTML code to render. For SVG: raw &lt;svg&gt; element.
+        For HTML: raw content fragment. No DOCTYPE, no &lt;html&gt;, no &lt;head&gt;.
+        Use CSS variables for all colors. Use sendPrompt(text) for clicks."</span>
+      <span class="kw">}</span>
+    <span class="kw">}</span>,
+    <span class="str">"required"</span>: [<span class="str">"title"</span>, <span class="str">"loading_messages"</span>, <span class="str">"widget_code"</span>]
+  <span class="kw">}</span>
+<span class="kw">}</span></pre>
+      </div>
+
+      <h3 style="margin-top:20px;margin-bottom:10px">How to register this with the API</h3>
+<pre><span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.anthropic.com/v1/messages'</span>, {
+  method: <span class="str">'POST'</span>,
+  headers: {
+    <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>,
+    <span class="str">'x-api-key'</span>: process.env.ANTHROPIC_API_KEY,
+    <span class="str">'anthropic-version'</span>: <span class="str">'2023-06-01'</span>
+  },
+  body: <span class="fn">JSON.stringify</span>({
+    model: <span class="str">'claude-sonnet-4-20250514'</span>,
+    max_tokens: <span class="val">8192</span>,
+    stream: <span class="val">true</span>,
+    system: LEARNER_SYSTEM_PROMPT,
+    tools: [SHOW_WIDGET_TOOL_DEFINITION], <span class="cm">// the schema above</span>
+    messages: conversationHistory  <span class="cm">// full multi-turn history</span>
+  })
+});</pre>
+
+      <div class="callout amber">
+        <div class="callout-title">Tool choice strategy</div>
+        <p style="margin:0;font-size:13px">Do not set <span class="inline-code">tool_choice: "any"</span> — that forces a visual on every response. Leave it as <span class="inline-code">"auto"</span> and let the system prompt's routing rules guide when Claude calls the tool. The model respects well-written routing instructions reliably. Forcing it overrides the model's judgment about when plain prose is the better answer.</p>
+      </div>
+
+      <h3 style="margin-top:20px;margin-bottom:10px">Handling the tool call response — full SSE parser</h3>
+<pre><span class="kw">async function</span>* <span class="fn">parseSSE</span>(body) {
+  <span class="kw">const</span> reader = body.<span class="fn">getReader</span>();
+  <span class="kw">const</span> decoder = <span class="kw">new</span> TextDecoder();
+  <span class="kw">let</span> buffer = <span class="str">''</span>;
+  <span class="kw">while</span> (<span class="val">true</span>) {
+    <span class="kw">const</span> { done, value } = <span class="kw">await</span> reader.<span class="fn">read</span>();
+    <span class="kw">if</span> (done) <span class="kw">break</span>;
+    buffer += decoder.<span class="fn">decode</span>(value, { stream: <span class="val">true</span> });
+    <span class="kw">const</span> lines = buffer.<span class="fn">split</span>(<span class="str">'\n'</span>);
+    buffer = lines.<span class="fn">pop</span>(); <span class="cm">// last partial line stays in buffer</span>
+    <span class="kw">for</span> (<span class="kw">const</span> line <span class="kw">of</span> lines) {
+      <span class="kw">if</span> (line.<span class="fn">startsWith</span>(<span class="str">'data: '</span>)) {
+        <span class="kw">try</span> { <span class="kw">yield</span> JSON.<span class="fn">parse</span>(line.<span class="fn">slice</span>(<span class="val">6</span>)); }
+        <span class="kw">catch</span> {} <span class="cm">// skip [DONE] sentinel</span>
+      }
+    }
+  }
+}
+
+<span class="kw">async function</span> <span class="fn">consumeStream</span>(response, onText, onWidget) {
+  <span class="kw">let</span> toolJson = <span class="str">''</span>, inTool = <span class="val">false</span>, toolName = <span class="str">''</span>;
+  <span class="kw">for await</span> (<span class="kw">const</span> evt <span class="kw">of</span> <span class="fn">parseSSE</span>(response.body)) {
+    <span class="kw">if</span> (evt.type === <span class="str">'content_block_start'</span>) {
+      <span class="kw">if</span> (evt.content_block.type === <span class="str">'tool_use'</span>) {
+        inTool = <span class="val">true</span>; toolJson = <span class="str">''</span>;
+        toolName = evt.content_block.name;
+      }
+    }
+    <span class="kw">if</span> (evt.type === <span class="str">'content_block_delta'</span>) {
+      <span class="kw">if</span> (!inTool && evt.delta.type === <span class="str">'text_delta'</span>)
+        <span class="fn">onText</span>(evt.delta.text);
+      <span class="kw">if</span> (inTool && evt.delta.type === <span class="str">'input_json_delta'</span>)
+        toolJson += evt.delta.partial_json;
+    }
+    <span class="kw">if</span> (evt.type === <span class="str">'content_block_stop'</span> && inTool) {
+      <span class="kw">const</span> params = JSON.<span class="fn">parse</span>(toolJson);
+      <span class="fn">onWidget</span>(toolName, params); <span class="cm">// { title, loading_messages, widget_code }</span>
+      inTool = <span class="val">false</span>;
+    }
+  }
+}</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ──── SECTION 4: PIPELINE ───────────────────────────── -->
+<section id="pipeline">
+  <div class="section-eyebrow">04 — Rendering Pipeline</div>
+  <h2>From model weights to browser pixels</h2>
+  <p class="lead">Five distinct layers, each doing a different job. Click any layer to expand the full technical detail.</p>
+
+  <!-- Stream simulation -->
+  <div class="stream-demo">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+      <h3 style="margin:0">Live stream simulation</h3>
+      <button class="btn" onclick="runStream()">Run simulation</button>
+    </div>
+    <div class="stream-row">
+      <div class="stream-lbl">SSE tokens</div>
+      <div class="stream-box" id="s-sse">ready</div>
+    </div>
+    <div class="stream-row">
+      <div class="stream-lbl">Frontend</div>
+      <div class="stream-box" id="s-state">idle</div>
+    </div>
+    <div class="stream-row" style="margin-bottom:0">
+      <div class="stream-lbl">Rendered</div>
+      <div class="stream-box" id="s-render">—</div>
+    </div>
+  </div>
+
+  <div class="layer-list" style="margin-top:28px">
+
+    <div class="layer-item l1" onclick="toggleLayer(this)">
+      <div class="layer-left"><div class="layer-num">1</div><div class="layer-line"></div></div>
+      <div class="layer-card">
+        <div class="layer-title">Model reasoning &amp; code generation</div>
+        <div class="layer-sub">Claude reads context, decides visual type, calculates coordinates, writes SVG or HTML as plain text.</div>
+        <div class="layer-tech">LLM inference → tool call: show_widget(title, widget_code, loading_messages)</div>
+        <div class="layer-detail">No image model. No canvas API. No external rendering service. The model generates raw markup the same way it generates Python or JSON — token by token from learned patterns. The quality of the visual comes entirely from the precision of the coordinate math inside the generated code. A rect at x=40 always lands 40px from the left. There is no rendering layer that "fixes" bad coordinates. The design system rules (coordinate math, color encoding, diagram type routing) are all applied during generation, not during rendering.</div>
+      </div>
+    </div>
+
+    <div class="layer-item l2" onclick="toggleLayer(this)">
+      <div class="layer-left"><div class="layer-num">2</div><div class="layer-line"></div></div>
+      <div class="layer-card">
+        <div class="layer-title">HTTP streaming via server-sent events</div>
+        <div class="layer-sub">Response arrives token-by-token. Frontend accumulates the tool call block. Loading card shows until code is complete.</div>
+        <div class="layer-tech">SSE stream → detect tool_use block start → accumulate widget_code → render on close</div>
+        <div class="layer-detail">The connection is a standard HTTP response with Content-Type: text/event-stream. Each event is a JSON delta. The frontend detects when a tool_use content block begins (by type) and shows a loading card with the animated loading messages. The widget_code string accumulates as more tokens arrive. Only when the closing delimiter arrives does the frontend take the complete string and hand it to the iframe renderer. This is why code structure matters: style → content → script ensures the HTML is visually correct while scripts are still loading.</div>
+      </div>
+    </div>
+
+    <div class="layer-item l3" onclick="toggleLayer(this)">
+      <div class="layer-left"><div class="layer-num">3</div><div class="layer-line"></div></div>
+      <div class="layer-card">
+        <div class="layer-title">Sandboxed iframe</div>
+        <div class="layer-sub">widget_code becomes the srcdoc of an iframe with strict sandbox flags. No access to parent page.</div>
+        <div class="layer-tech">sandbox="allow-scripts allow-popups-to-escape-sandbox" — no allow-same-origin</div>
+        <div class="layer-detail">Omitting allow-same-origin makes the iframe a cross-origin document — even though it's on the same domain. This means the widget code cannot access: cookies, localStorage, sessionStorage, IndexedDB, auth tokens, parent page DOM, window.location, or any browser storage. Model-generated code runs in a fully walled environment. The only escape hatch is window.postMessage(), which Claude uses via the injected sendPrompt() global to inject new user messages into the chat. A separate CSP header restricts external script sources to the allowlist: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, unpkg.com.</div>
+      </div>
+    </div>
+
+    <div class="layer-item l4" onclick="toggleLayer(this)">
+      <div class="layer-left"><div class="layer-num">4</div><div class="layer-line"></div></div>
+      <div class="layer-card">
+        <div class="layer-title">CSS injection &amp; theme resolution</div>
+        <div class="layer-sub">Parent prepends a stylesheet defining all CSS variables and c-{ramp} class definitions. Dark mode is automatic.</div>
+        <div class="layer-tech">--color-text-primary, --font-sans, c-blue, c-teal... resolve at paint time from prefers-color-scheme</div>
+        <div class="layer-detail">Before the srcdoc renders, the parent prepends a &lt;style&gt; block containing: all --color-* and --font-* CSS custom properties (with @media prefers-color-scheme: dark overrides), all c-{ramp} class definitions (c-blue, c-teal, c-purple, etc.), the pre-built utility classes (node, arr, box, leader, t, ts, th), and the sendPrompt/openLink global function injections. The c-{ramp} classes use direct-child selectors (>) — nesting a group inside a c-blue group breaks it, as the inner shapes become grandchildren and fall out of the selector. Claude puts c-* on the innermost group containing the shapes.</div>
+      </div>
+    </div>
+
+    <div class="layer-item" onclick="toggleLayer(this)" style="cursor:pointer">
+      <div class="layer-left"><div class="layer-num" style="background:rgba(99,153,34,0.1);color:#639922">5</div></div>
+      <div class="layer-card">
+        <div class="layer-title">Browser rendering: DOM → paint → composite</div>
+        <div class="layer-sub">SVG/HTML parsed into DOM. CSS applied. Layout calculated. Paint commands issued to GPU.</div>
+        <div class="layer-tech">viewBox="0 0 680 H" + width="100%" → 1:1 coordinate mapping at 680px container width</div>
+        <div class="layer-detail">Identical to rendering any webpage. SVG elements become SVGElement DOM nodes with .x, .y, .width properties. CSS class selectors match them. The browser performs layout using the SVG coordinate system, applies fills and strokes from resolved CSS custom properties, and composites to a GPU layer. Scripts execute after full fragment parse. The iframe auto-sizes to the document's intrinsic height — which is why position:fixed breaks it (fixed elements don't contribute to scrollHeight, collapsing the iframe). The 1:1 coordinate guarantee: viewBox width 680 in a 680px container means every SVG unit is exactly 1 CSS pixel. Changing viewBox width rescales everything — font calibration, box widths, all break.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ──── SECTION 5: DESIGN SYSTEM ─────────────────────── -->
+<section id="design-system">
+  <div class="section-eyebrow">05 — Design System</div>
+  <h2>Colors, typography &amp; layout rules</h2>
+  <p class="lead">The visual consistency comes from a strict design token system injected into every widget. Understanding it is essential for replicating the quality in your own app.</p>
+
+  <h3 style="margin-bottom:14px">9-ramp color palette (hover to inspect stops)</h3>
+
+  <div id="swatches"></div>
+
+  <h3 style="margin-top:28px;margin-bottom:12px">Key CSS variables</h3>
+  <table class="var-table">
+    <thead><tr><th>Variable</th><th>Purpose</th><th>Dark mode</th></tr></thead>
+    <tbody>
+      <tr><td>--color-text-primary</td><td>Body text, headings</td><td>~#e8e6df (near white)</td></tr>
+      <tr><td>--color-text-secondary</td><td>Descriptions, subtitles</td><td>~#9b9890 (muted)</td></tr>
+      <tr><td>--color-background-secondary</td><td>Card surfaces, hover states</td><td>~#141417</td></tr>
+      <tr><td>--color-border-tertiary</td><td>Default 0.5px borders</td><td>rgba(255,255,255,0.08)</td></tr>
+      <tr><td>--font-sans</td><td>UI and prose text</td><td>Anthropic Sans</td></tr>
+      <tr><td>--font-mono</td><td>Code, labels, tags</td><td>monospace stack</td></tr>
+      <tr><td>--border-radius-md / -lg</td><td>8px / 12px corner radii</td><td>same</td></tr>
+    </tbody>
+  </table>
+
+  <h3 style="margin-top:24px;margin-bottom:12px">Color assignment rules</h3>
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-label">Encode meaning, not sequence</div>
+      <p>Don't cycle colors rainbow-style (step 1 = blue, step 2 = amber). Group nodes by category — all nodes of the same type share one color.</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Use 2–3 colors per diagram</div>
+      <p>More colors = more visual noise. gray + purple + teal is cleaner than six ramps. Reserve blue/green/amber/red for semantic meaning (info/success/warning/error).</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Physical properties → warm/cool</div>
+      <p>In illustrative diagrams: warm ramps (amber, coral, red) = heat/energy/pressure. Cool ramps (blue, teal) = cold/calm. Gray = inert structure.</p>
+    </div>
+    <div class="card">
+      <div class="card-label">Text on colored backgrounds</div>
+      <p>Use the 800 or 900 stop from the same ramp — never black or generic gray. Two-line boxes need different stops for title vs subtitle (800 title, 600 subtitle).</p>
+    </div>
+  </div>
+
+  <div class="callout">
+    <div class="callout-title" style="color:var(--text2)">SVG text on colored backgrounds</div>
+    <p style="margin:0;font-size:13px">Text on Blue-50 (#E6F1FB) must use Blue-800 (#0C447C) — not black. Light mode: 50 fill + 600 stroke + 800 title / 600 subtitle. Dark mode: 800 fill + 200 stroke + 100 title / 200 subtitle. The <span class="inline-code">c-{ramp}</span> classes handle both modes automatically when applied to the group.</p>
+  </div>
+</section>
+
+<!-- ──── SECTION 6: BUILD YOUR OWN ────────────────────── -->
+<section id="build">
+  <div class="section-eyebrow">06 — Build Your Own</div>
+  <h2>Replicating this in your learning companion</h2>
+  <p class="lead">Every layer is reproducible with the standard Anthropic API. Here is the complete blueprint — no proprietary claude.ai APIs required.</p>
+
+  <div class="bp-step">
+    <div class="bp-num">1</div>
+    <div class="bp-body">
+      <h3>System prompt: teach the model your design tokens</h3>
+      <p>Define your visual routing rules, your CSS variable names, and your color palette in the system prompt. The model generates code against whatever design system you describe. You don't need the claude.ai palette — define your own variables.</p>
+    </div>
+  </div>
+
+<pre style="margin:0 0 20px 54px"><span class="cm">// Example system prompt fragment:</span>
+<span class="str">"When a visual would help the learner understand, generate raw SVG
+or HTML. Use these CSS variables for all colors:
+  --learner-primary: your brand color
+  --learner-surface: card background
+  --learner-text: body text
+All color ramps follow: [your palette].
+Expose sendPrompt(text) for clickable follow-ups."</span></pre>
+
+  <div class="bp-step">
+    <div class="bp-num">2</div>
+    <div class="bp-body">
+      <h3>Detect and extract widget code from the streaming response</h3>
+      <p>Parse the SSE stream for <span class="inline-code">tool_use</span> content blocks. Accumulate the <span class="inline-code">widget_code</span> string. Show a loading indicator while streaming. Render only on block completion.</p>
+    </div>
+  </div>
+
+<pre style="margin:0 0 20px 54px"><span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.anthropic.com/v1/messages'</span>, {
+  method: <span class="str">'POST'</span>,
+  headers: { <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span> },
+  body: <span class="fn">JSON.stringify</span>({
+    model: <span class="str">'claude-sonnet-4-20250514'</span>,
+    max_tokens: <span class="val">1000</span>,
+    stream: <span class="val">true</span>,
+    system: YOUR_SYSTEM_PROMPT,
+    messages: [{ role: <span class="str">'user'</span>, content: userMessage }]
+  })
+});
+
+<span class="kw">let</span> widgetCode = <span class="str">''</span>, inToolBlock = <span class="val">false</span>;
+<span class="kw">for await</span> (<span class="kw">const</span> chunk <span class="kw">of</span> parseSSE(response.body)) {
+  <span class="kw">if</span> (chunk.type === <span class="str">'content_block_start'</span> && chunk.content_block.type === <span class="str">'tool_use'</span>)
+    inToolBlock = <span class="val">true</span>;
+  <span class="kw">if</span> (inToolBlock && chunk.type === <span class="str">'content_block_delta'</span>)
+    widgetCode += chunk.delta.partial_json ?? <span class="str">''</span>;
+  <span class="kw">if</span> (chunk.type === <span class="str">'content_block_stop'</span> && inToolBlock) {
+    renderWidget(JSON.parse(widgetCode).widget_code);
+    inToolBlock = <span class="val">false</span>; widgetCode = <span class="str">''</span>;
+  }
+}</pre>
+
+  <div class="bp-step">
+    <div class="bp-num">3</div>
+    <div class="bp-body">
+      <h3>Render in a sandboxed iframe</h3>
+      <p>Create an <span class="inline-code">&lt;iframe&gt;</span>, inject your CSS variable stylesheet, then set <span class="inline-code">srcdoc</span>. The browser does the rest.</p>
+    </div>
+  </div>
+
+<pre style="margin:0 0 20px 54px"><span class="kw">function</span> <span class="fn">renderWidget</span>(code) {
+  <span class="kw">const</span> iframe = document.<span class="fn">createElement</span>(<span class="str">'iframe'</span>);
+  iframe.sandbox = <span class="str">'allow-scripts allow-popups-to-escape-sandbox'</span>;
+  iframe.style.cssText = <span class="str">'width:100%;border:none;border-radius:10px'</span>;
+
+  <span class="kw">const</span> css = <span class="fn">getYourCSSVariables</span>(); <span class="cm">// your design tokens</span>
+  <span class="kw">const</span> bridge = <span class="str">`
+    &lt;script&gt;
+      window.sendPrompt = t => parent.postMessage({type:'prompt',text:t},'*');
+    &lt;/script&gt;`</span>;
+
+  iframe.srcdoc = <span class="str">`&lt;style&gt;${css}&lt;/style&gt;${bridge}${code}`</span>;
+
+  <span class="cm">// Auto-size iframe to content height</span>
+  window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, e => {
+    <span class="kw">if</span> (e.data.type === <span class="str">'resize'</span>) iframe.style.height = e.data.h + <span class="str">'px'</span>;
+  });
+
+  container.<span class="fn">appendChild</span>(iframe);
+}</pre>
+
+  <div class="bp-step">
+    <div class="bp-num">4</div>
+    <div class="bp-body">
+      <h3>Handle the sendPrompt bridge</h3>
+      <p>Listen for postMessage events from the iframe. When one arrives, inject the text as the next user message — continuing the tutoring conversation seamlessly.</p>
+    </div>
+  </div>
+
+<pre style="margin:0 0 20px 54px">window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, event => {
+  <span class="kw">if</span> (event.data?.type === <span class="str">'prompt'</span>) {
+    <span class="cm">// Inject as next user message in the tutoring session</span>
+    <span class="fn">sendToModel</span>(event.data.text);
+  }
+});</pre>
+
+  <div class="bp-step">
+    <div class="bp-num">5</div>
+    <div class="bp-body">
+      <h3>Teaching-specific additions</h3>
+      <p>For a learning companion, extend the system prompt with pedagogical routing: prefer illustrative diagrams over flowcharts for concept explanation, use steppers for sequential processes, make every node clickable with a follow-up question that deepens understanding.</p>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Complete system prompt template for a learning companion</h3>
+  <p>Copy, adapt, and extend this template. Every section is load-bearing — do not remove sections, only edit the variables in brackets.</p>
+
+  <div class="prompt-block">
+<span class="pm-label">system prompt · learner agent</span>You are an expert learning companion for [SUBJECT AREA]. Your learners are [LEARNER PROFILE — e.g. "university students with no prior calculus background"].
+
+## Visual routing rules
+
+When a learner asks a question where a diagram, chart, or interactive explainer would meaningfully improve understanding, call the show_widget tool. Apply these rules strictly:
+
+**Always use show_widget for:**
+- "explain how X works" → illustrative SVG or interactive HTML
+- "show me the steps of X" → SVG flowchart or HTML stepper
+- "what's the difference between X and Y" → comparison SVG or side-by-side cards
+- "plot / chart / graph X" → HTML with Chart.js
+- "walk me through X" → HTML stepper (one panel per stage)
+- Any concept with spatial, relational, or sequential structure
+
+**Never use show_widget for:**
+- Direct factual questions ("what year did X happen?")
+- Definitions that are one sentence long
+- Questions where the learner explicitly asked for text only
+- Code debugging or code writing tasks
+
+## SVG rules (strictly enforced)
+
+- viewBox must always be "0 0 680 H" — 680 wide, H calculated from content
+- Never hardcode colors — always use c-{ramp} classes for colored nodes
+- Every box width must be computed: max(title_chars × 8, subtitle_chars × 7) + 24
+- Arrows must never cross box interiors — use L-bend path detours
+- Every SVG text element needs dominant-baseline="central"
+- Connector paths need fill="none"
+- No comments in generated code
+
+## HTML widget rules
+
+- No DOCTYPE, no &lt;html&gt;, no &lt;head&gt;, no &lt;body&gt;
+- All colors via CSS variables: var(--color-text-primary) etc.
+- No localStorage — state in JS variables only
+- No position:fixed — iframe auto-sizes to intrinsic height
+- CDN scripts only from: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, unpkg.com
+- Structure: &lt;style&gt; first → content HTML → CDN &lt;script&gt; → logic &lt;script&gt;
+
+## sendPrompt() usage
+
+Every diagram node that could lead to a deeper question must have:
+onclick="sendPrompt('&lt;specific follow-up question about that node&gt;')"
+
+The follow-up question must be:
+- Specific to what the learner just clicked (not generic "tell me more")
+- One level deeper than what the node label says
+- Phrased as the learner would ask it
+
+## Pedagogical principles
+
+1. Illustrative over flowchart: when explaining a mechanism, draw it spatially — not as boxes and arrows. A hash function is a funnel. Recursion is a stack of frames. Attention is a fan of weighted lines.
+2. Interactive over static: if the system has a control (thermostat, learning rate, frequency), give the diagram that control.
+3. Click-to-deepen: every visual element that could lead to a question should trigger one on click.
+4. Color encodes meaning, not sequence: don't rainbow-cycle. Group by category or map to physical properties (warm = hot/active, cool = calm/passive).
+5. Multiple small diagrams over one dense diagram: build understanding progressively, one concept per visual.
+
+## Tone and persona
+
+[YOUR TONE INSTRUCTIONS — e.g. "Warm, encouraging, Socratic. Ask one question per response to check understanding."]</div>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Full renderWidget implementation with auto-sizing</h3>
+
+<pre><span class="cm">// Complete CSS variable set to inject into every iframe</span>
+<span class="kw">function</span> <span class="fn">getLearnerCSS</span>() {
+  <span class="kw">const</span> dark = window.matchMedia(<span class="str">'(prefers-color-scheme: dark)'</span>).matches;
+  <span class="kw">return</span> <span class="str">`
+:root {
+  --color-text-primary: ${dark ? '#e8e6df' : '#1a1918'};
+  --color-text-secondary: ${dark ? '#9b9890' : '#5a5855'};
+  --color-text-tertiary: ${dark ? '#5e5c58' : '#9b9890'};
+  --color-background-primary: ${dark ? '#141417' : '#ffffff'};
+  --color-background-secondary: ${dark ? '#1a1a1f' : '#f4f2eb'};
+  --color-background-tertiary: ${dark ? '#0d0d0f' : '#eceae3'};
+  --color-border-tertiary: ${dark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.09)'};
+  --color-border-secondary: ${dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)'};
+  --color-text-info: ${dark ? '#378add' : '#185fa5'};
+  --color-background-info: ${dark ? 'rgba(55,138,221,0.15)' : '#e6f1fb'};
+  --color-text-success: ${dark ? '#639922' : '#27500a'};
+  --color-background-success: ${dark ? 'rgba(99,153,34,0.15)' : '#eaf3de'};
+  --color-text-warning: ${dark ? '#ef9f27' : '#633806'};
+  --color-background-warning: ${dark ? 'rgba(239,159,39,0.15)' : '#faeeda'};
+  --color-text-danger: ${dark ? '#d85a30' : '#712b13'};
+  --color-background-danger: ${dark ? 'rgba(216,90,48,0.15)' : '#faece7'};
+  --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --border-radius-sm: 4px;
+  --border-radius-md: 8px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 16px;
+}
+/* c-{ramp} color classes — all 9 ramps, light+dark */
+.c-purple > rect, .c-purple > circle, .c-purple > ellipse {
+  fill: ${dark ? '#3C3489' : '#EEEDFE'};
+  stroke: ${dark ? '#534AB7' : '#534AB7'};
+}
+.c-purple > text.t, .c-purple > text.th { fill: ${dark ? '#CECBF6' : '#3C3489'}; }
+.c-purple > text.ts { fill: ${dark ? '#AFA9EC' : '#534AB7'}; }
+.c-teal > rect, .c-teal > circle, .c-teal > ellipse {
+  fill: ${dark ? '#085041' : '#E1F5EE'};
+  stroke: ${dark ? '#0F6E56' : '#0F6E56'};
+}
+.c-teal > text.t, .c-teal > text.th { fill: ${dark ? '#9FE1CB' : '#085041'}; }
+.c-teal > text.ts { fill: ${dark ? '#5DCAA5' : '#0F6E56'}; }
+.c-blue > rect, .c-blue > circle, .c-blue > ellipse {
+  fill: ${dark ? '#0C447C' : '#E6F1FB'};
+  stroke: ${dark ? '#185FA5' : '#185FA5'};
+}
+.c-blue > text.t, .c-blue > text.th { fill: ${dark ? '#B5D4F4' : '#0C447C'}; }
+.c-blue > text.ts { fill: ${dark ? '#85B7EB' : '#185FA5'}; }
+.c-amber > rect, .c-amber > circle, .c-amber > ellipse {
+  fill: ${dark ? '#633806' : '#FAEEDA'};
+  stroke: ${dark ? '#854F0B' : '#854F0B'};
+}
+.c-amber > text.t, .c-amber > text.th { fill: ${dark ? '#FAC775' : '#633806'}; }
+.c-amber > text.ts { fill: ${dark ? '#EF9F27' : '#854F0B'}; }
+.c-green > rect, .c-green > circle, .c-green > ellipse {
+  fill: ${dark ? '#27500A' : '#EAF3DE'};
+  stroke: ${dark ? '#3B6D11' : '#3B6D11'};
+}
+.c-green > text.t, .c-green > text.th { fill: ${dark ? '#C0DD97' : '#27500A'}; }
+.c-green > text.ts { fill: ${dark ? '#97C459' : '#3B6D11'}; }
+.c-coral > rect, .c-coral > circle, .c-coral > ellipse {
+  fill: ${dark ? '#712B13' : '#FAECE7'};
+  stroke: ${dark ? '#993C1D' : '#993C1D'};
+}
+.c-coral > text.t, .c-coral > text.th { fill: ${dark ? '#F5C4B3' : '#712B13'}; }
+.c-coral > text.ts { fill: ${dark ? '#F0997B' : '#993C1D'}; }
+.c-gray > rect, .c-gray > circle, .c-gray > ellipse {
+  fill: ${dark ? '#444441' : '#F1EFE8'};
+  stroke: ${dark ? '#5F5E5A' : '#5F5E5A'};
+}
+.c-gray > text.t, .c-gray > text.th { fill: ${dark ? '#D3D1C7' : '#444441'}; }
+.c-gray > text.ts { fill: ${dark ? '#B4B2A9' : '#5F5E5A'}; }
+/* Pre-built utility classes */
+text.t  { font-size: 14px; font-weight: 400; fill: ${dark ? '#e8e6df' : '#1a1918'}; font-family: var(--font-sans); }
+text.th { font-size: 14px; font-weight: 500; fill: ${dark ? '#e8e6df' : '#1a1918'}; font-family: var(--font-sans); }
+text.ts { font-size: 12px; font-weight: 400; fill: ${dark ? '#9b9890' : '#5a5855'}; font-family: var(--font-sans); }
+.node   { cursor: pointer; }
+.node:hover { opacity: 0.85; }
+.arr    { stroke: ${dark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.25)'}; stroke-width: 1.5; fill: none; }
+.box    { fill: ${dark ? '#1a1a1f' : '#f4f2eb'}; stroke: ${dark ? 'rgba(255,255,255,0.14)' : 'rgba(0,0,0,0.14)'}; }
+.leader { stroke: ${dark ? 'rgba(255,255,255,0.2)' : 'rgba(0,0,0,0.2)'}; stroke-width: 0.5; fill: none; stroke-dasharray: 3 3; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: transparent; font-family: var(--font-sans); color: var(--color-text-primary); }
+input[type=range] { width: 100%; accent-color: var(--color-text-info); }
+button { cursor: pointer; font-family: var(--font-sans); }
+`}
+
+<span class="kw">function</span> <span class="fn">renderWidget</span>(toolParams, container) {
+  <span class="kw">const</span> { title, loading_messages, widget_code } = toolParams;
+
+  <span class="cm">// Show loading card immediately</span>
+  <span class="kw">const</span> card = document.<span class="fn">createElement</span>(<span class="str">'div'</span>);
+  card.className = <span class="str">'widget-card loading'</span>;
+  card.innerHTML = <span class="str">`&lt;div class="loading-msg"&gt;${loading_messages[0] || 'Building visual…'}&lt;/div&gt;`</span>;
+  container.<span class="fn">appendChild</span>(card);
+
+  <span class="cm">// Cycle through loading messages while code arrives</span>
+  <span class="kw">let</span> msgIdx = <span class="val">0</span>;
+  <span class="kw">const</span> msgInterval = <span class="fn">setInterval</span>(() => {
+    msgIdx = (msgIdx + <span class="val">1</span>) % loading_messages.length;
+    <span class="kw">const</span> el = card.<span class="fn">querySelector</span>(<span class="str">'.loading-msg'</span>);
+    <span class="kw">if</span> (el) el.textContent = loading_messages[msgIdx];
+  }, <span class="val">1800</span>);
+
+  <span class="cm">// Once widget_code is fully accumulated:</span>
+  <span class="fn">clearInterval</span>(msgInterval);
+  card.classList.<span class="fn">remove</span>(<span class="str">'loading'</span>);
+
+  <span class="kw">const</span> iframe = document.<span class="fn">createElement</span>(<span class="str">'iframe'</span>);
+  iframe.sandbox = <span class="str">'allow-scripts allow-popups-to-escape-sandbox'</span>;
+  iframe.style.cssText = <span class="str">'width:100%;border:none;display:block;border-radius:10px'</span>;
+  iframe.title = title;
+
+  <span class="kw">const</span> bridge = <span class="str">`&lt;script&gt;
+    window.sendPrompt = t => parent.postMessage({type:'learner_prompt',text:t,widgetTitle:'${title}'},'*');
+    window.addEventListener('load', () => {
+      parent.postMessage({type:'iframe_resize',h:document.documentElement.scrollHeight},'*');
+    });
+    new ResizeObserver(() => {
+      parent.postMessage({type:'iframe_resize',h:document.documentElement.scrollHeight},'*');
+    }).observe(document.body);
+  &lt;/script&gt;`</span>;
+
+  iframe.srcdoc = <span class="str">`&lt;style&gt;${getLearnerCSS()}&lt;/style&gt;${bridge}${widget_code}`</span>;
+  card.<span class="fn">appendChild</span>(iframe);
+
+  <span class="cm">// Auto-size + sendPrompt bridge</span>
+  window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, e => {
+    <span class="kw">if</span> (e.source !== iframe.contentWindow) <span class="kw">return</span>;
+    <span class="kw">if</span> (e.data.type === <span class="str">'iframe_resize'</span>)
+      iframe.style.height = (e.data.h + <span class="val">8</span>) + <span class="str">'px'</span>;
+    <span class="kw">if</span> (e.data.type === <span class="str">'learner_prompt'</span>)
+      <span class="fn">sendToAgent</span>(e.data.text, { contextWidget: e.data.widgetTitle });
+  });
+}</pre>
+
+  <div class="callout teal">
+    <div class="callout-title">The key insight for learning</div>
+    <p style="margin:0;font-size:14px">The most impactful design principle is the <strong style="color:var(--text)">illustrative vs. flowchart split</strong>. When explaining a concept, the temptation is to draw boxes and arrows. The better answer is usually a spatial metaphor that shows the mechanism — attention weights as a fan of lines, gradient descent as a ball on a loss surface, recursion as a stack of frames. That's what makes a visual actually teach rather than just document. Prompt the model explicitly toward this pattern for conceptual explanations.</p>
+  </div>
+
+  <div class="callout" style="margin-top:16px">
+    <div class="callout-title" style="color:var(--text2)">Available CDN libraries in widgets</div>
+    <div class="tag-row" style="margin:8px 0 0">
+      <span class="tag-pill">Chart.js</span>
+      <span class="tag-pill">D3.js</span>
+      <span class="tag-pill">Three.js r128</span>
+      <span class="tag-pill">Mermaid.js</span>
+      <span class="tag-pill">Plotly</span>
+      <span class="tag-pill">Tone.js</span>
+      <span class="tag-pill">Recharts</span>
+      <span class="tag-pill">MathJS</span>
+      <span class="tag-pill">Lodash</span>
+      <span class="tag-pill">Papaparse</span>
+      <span class="tag-pill">SheetJS</span>
+      <span class="tag-pill">TensorFlow.js</span>
+    </div>
+    <p style="margin-top:8px;font-size:13px">All loaded from cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, or unpkg.com. Any other CDN origin is blocked silently by CSP.</p>
+  </div>
+</section>
+
+<!-- ──── SECTION 7: AGENTIC SYSTEM ────────────────────── -->
+<section id="agent">
+  <div class="section-eyebrow">07 — Agentic System</div>
+  <h2>Building the full agent loop</h2>
+  <p class="lead">A learning companion is not a one-shot chatbot. It maintains conversation history, routes tool calls, tracks what the learner has seen, and uses every visual click as a signal about where understanding needs deepening.</p>
+
+  <h3 style="margin-bottom:12px">Multi-turn conversation with widget context</h3>
+  <p>The agent needs to carry the full conversation history on every request. When a learner clicks a node inside a diagram, the widget title is passed alongside the question — giving the model context about what diagram was being viewed.</p>
+
+<pre><span class="cm">// Agent state — lives in your app, not the model</span>
+<span class="kw">const</span> agentState = {
+  history: [],        <span class="cm">// full message array — grows with every turn</span>
+  activeWidgets: {},  <span class="cm">// widgetTitle → { code, topic, renderedAt }</span>
+  learnerProfile: {
+    name: <span class="str">''</span>,
+    subject: <span class="str">''</span>,
+    conceptsSeen: [],  <span class="cm">// track what's been visualised</span>
+    strugglingWith: [] <span class="cm">// inferred from repeated questions</span>
+  }
+};
+
+<span class="kw">async function</span> <span class="fn">sendToAgent</span>(userText, meta = {}) {
+  <span class="cm">// Augment message with widget context if coming from a click</span>
+  <span class="kw">const</span> messageContent = meta.contextWidget
+    ? <span class="str">`[Viewing diagram: "${meta.contextWidget}"] ${userText}`</span>
+    : userText;
+
+  agentState.history.<span class="fn">push</span>({ role: <span class="str">'user'</span>, content: messageContent });
+
+  <span class="kw">const</span> response = <span class="kw">await</span> <span class="fn">fetch</span>(<span class="str">'https://api.anthropic.com/v1/messages'</span>, {
+    method: <span class="str">'POST'</span>,
+    headers: {
+      <span class="str">'Content-Type'</span>: <span class="str">'application/json'</span>,
+      <span class="str">'x-api-key'</span>: YOUR_API_KEY,
+      <span class="str">'anthropic-version'</span>: <span class="str">'2023-06-01'</span>
+    },
+    body: <span class="fn">JSON.stringify</span>({
+      model: <span class="str">'claude-sonnet-4-20250514'</span>,
+      max_tokens: <span class="val">8192</span>,
+      stream: <span class="val">true</span>,
+      system: <span class="fn">buildSystemPrompt</span>(agentState.learnerProfile),
+      tools: [SHOW_WIDGET_TOOL],
+      messages: agentState.history  <span class="cm">// full history every time</span>
+    })
+  });
+
+  <span class="kw">let</span> assistantText = <span class="str">''</span>;
+  <span class="kw">const</span> assistantBlocks = [];
+
+  <span class="kw">await</span> <span class="fn">consumeStream</span>(response,
+    text => { assistantText += text; <span class="fn">appendChatText</span>(text); },
+    (toolName, params) => {
+      assistantBlocks.<span class="fn">push</span>({ type: <span class="str">'tool_use'</span>, name: toolName, input: params });
+      <span class="fn">renderWidget</span>(params, chatContainer);
+      <span class="cm">// Track what's been shown to this learner</span>
+      agentState.activeWidgets[params.title] = { code: params.widget_code, shownAt: Date.now() };
+      agentState.learnerProfile.conceptsSeen.<span class="fn">push</span>(params.title);
+    }
+  );
+
+  <span class="cm">// Push assistant turn to history (required for multi-turn)</span>
+  agentState.history.<span class="fn">push</span>({
+    role: <span class="str">'assistant'</span>,
+    content: [
+      ...(assistantText ? [{ type: <span class="str">'text'</span>, text: assistantText }] : []),
+      ...assistantBlocks
+    ]
+  });
+}</pre>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Learner profile — building understanding over time</h3>
+  <p>As the agent observes which concepts trigger follow-up questions and which diagrams the learner clicks into, it can adjust the system prompt dynamically — spending more time on struggled concepts and less on mastered ones.</p>
+
+<pre><span class="kw">function</span> <span class="fn">buildSystemPrompt</span>(learnerProfile) {
+  <span class="kw">const</span> base = LEARNER_SYSTEM_PROMPT; <span class="cm">// your full template from §06</span>
+
+  <span class="kw">const</span> profileAddendum = learnerProfile.conceptsSeen.length > <span class="val">0</span> ? <span class="str">`
+## Learner context
+- Name: ${learnerProfile.name || 'the learner'}
+- Concepts already visualised this session: ${learnerProfile.conceptsSeen.join(', ')}
+- Do not re-explain concepts the learner has already seen a diagram for — build on them.
+${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfile.strugglingWith.join(', ')} — spend extra time here.` : ''}
+`</span> : <span class="str">''</span>;
+
+  <span class="kw">return</span> base + profileAddendum;
+}</pre>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Common agentic patterns for learner platforms</h3>
+
+  <div class="accordion">
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Pattern: concept → visual → quiz</div><div class="acc-trigger-sub">Explain, show, then test understanding</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p>The most effective learning loop: Claude explains a concept in prose, generates a visual, then asks a Socratic question at the end. The learner's answer goes back into the conversation, and the agent decides whether to go deeper or advance.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>After every concept explanation with a visual, end your response with a single Socratic question that tests whether the learner understood the mechanism — not just the definition. Wait for their answer before proceeding. If they answer correctly, acknowledge it briefly and offer to go deeper. If not, generate a different visual that approaches the same concept from a different angle.</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Pattern: progressive disclosure</div><div class="acc-trigger-sub">Start simple, add complexity on click</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p>For complex topics (neural networks, organic chemistry, quantum mechanics), the first diagram should be deliberately simplified. The full complexity lives behind <span class="inline-code">sendPrompt()</span> clicks on each component. This prevents the learner from being overwhelmed and gives them agency over the depth of exploration.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>For complex multi-component topics, always start with an overview diagram showing 3-4 high-level components only. Keep subtitles to 4 words maximum. Put the depth in the onclick sendPrompt questions — make each one invite the learner to zoom into that component specifically. The detail diagram for each component comes only when they click.</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Pattern: multi-representation</div><div class="acc-trigger-sub">Same concept, different visual encodings</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p>Research shows that learners who encounter the same concept in multiple visual formats (equation, graph, spatial metaphor, real-world analogy) retain it significantly longer. The agent can explicitly cycle through representations when it detects confusion.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>If a learner asks the same question a second time, or says they still don't understand after seeing a diagram, do not regenerate the same diagram. Instead, choose a completely different visual representation of the same concept — switch from structural to illustrative, from static SVG to interactive HTML, from abstract to concrete example. Every re-explanation must use a different visual encoding.</div>
+      </div>
+    </div>
+
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Pattern: comparison scaffolding</div><div class="acc-trigger-sub">Show difference, not just definition</div></div>
+        <span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <p>Learners understand concepts best in contrast. "What is a stack?" is harder to answer than "How is a stack different from a queue?". The agent should default to comparative visuals that show both options simultaneously.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>When a learner asks "what is X?" for any data structure, algorithm, or concept that has a natural counterpart, generate a side-by-side SVG structural diagram showing X and its complement (stack/queue, array/linked list, TCP/UDP, supervised/unsupervised). The visual difference teaches both concepts simultaneously.</div>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ──── SECTION 8: LEARNER PROMPTS ───────────────────── -->
+<section id="prompts">
+  <div class="section-eyebrow">08 — Learner Prompts</div>
+  <h2>Prompt patterns that unlock the best visuals</h2>
+  <p class="lead">The quality of the visual is partly a function of how the question is asked. These are the prompt patterns that reliably produce the highest-quality educational visuals — teach these patterns to your learners or bake them into your UI as quick-action buttons.</p>
+
+  <h3 style="margin-bottom:12px">High-yield prompt patterns</h3>
+  <table class="dt">
+    <thead><tr><th>Pattern</th><th>Example</th><th>Visual produced</th></tr></thead>
+    <tbody>
+      <tr><td>"show me how X works"</td><td>"Show me how a TCP handshake works"</td><td>Illustrative SVG — two endpoints, numbered packets, ACK returning</td></tr>
+      <tr><td>"explain X visually"</td><td>"Explain backpropagation visually"</td><td>Interactive HTML — loss surface, gradient arrows, weight update animation</td></tr>
+      <tr><td>"what's the difference between X and Y"</td><td>"What's the difference between RAM and disk"</td><td>SVG side-by-side with speed/size annotations</td></tr>
+      <tr><td>"walk me through X step by step"</td><td>"Walk me through how RSA encryption works step by step"</td><td>HTML stepper — one panel per stage, SVG inline</td></tr>
+      <tr><td>"draw X"</td><td>"Draw the architecture of a React app"</td><td>SVG structural diagram — components, props flow, state</td></tr>
+      <tr><td>"I don't get X, try a different way"</td><td>"I don't get recursion, try a different way"</td><td>Completely different visual encoding from previous response</td></tr>
+      <tr><td>"make it interactive"</td><td>"Make it interactive" (after a static SVG)</td><td>HTML version with sliders/controls for the same concept</td></tr>
+      <tr><td>"zoom in on X" (after viewing a diagram)</td><td>"Zoom in on the attention head" (after viewing transformer)</td><td>New diagram focused on that component only</td></tr>
+    </tbody>
+  </table>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Quick-action button prompts (copy into your UI)</h3>
+  <p>Add these as chip/button actions below every agent response. They give learners structured ways to deepen their understanding without having to formulate a question from scratch.</p>
+
+  <div class="card-grid">
+    <div class="card">
+      <div class="card-label">After any explanation</div>
+      <div class="prompt-block" style="margin-top:8px;font-size:11px;">"Can you show me this visually with an interactive diagram?"</div>
+      <div class="prompt-block" style="font-size:11px;">"Give me a real-world analogy for this as a diagram"</div>
+    </div>
+    <div class="card">
+      <div class="card-label">After any diagram</div>
+      <div class="prompt-block" style="margin-top:8px;font-size:11px;">"What's the most common mistake people make when thinking about this?"</div>
+      <div class="prompt-block" style="font-size:11px;">"Can you add a slider so I can explore different values?"</div>
+    </div>
+    <div class="card">
+      <div class="card-label">For deeper understanding</div>
+      <div class="prompt-block" style="margin-top:8px;font-size:11px;">"What happens to this diagram if [parameter] doubles?"</div>
+      <div class="prompt-block" style="font-size:11px;">"Show me what breaks or goes wrong in this system"</div>
+    </div>
+    <div class="card">
+      <div class="card-label">For testing understanding</div>
+      <div class="prompt-block" style="margin-top:8px;font-size:11px;">"Ask me a question about this to check I understood it"</div>
+      <div class="prompt-block" style="font-size:11px;">"Give me a problem to solve that uses this concept"</div>
+    </div>
+  </div>
+
+  <hr class="section-divider">
+  <h3 style="margin-bottom:12px">Subject-specific starter prompts</h3>
+  <p>Starter prompts tuned by subject area that reliably trigger the best educational visuals:</p>
+
+  <div class="accordion">
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Computer Science</div></div><span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <div class="prompt-block"><span class="pm-label">starter prompts</span>"Show me how [bubble sort / merge sort / quicksort] rearranges this array: [5, 2, 8, 1, 9, 3]"
+"Draw the call stack when this recursive function runs: [paste function]"
+"Explain how a hash collision is handled with chaining — show it visually"
+"Walk me through what happens in memory when I write: let x = [1,2,3]"
+"Show me the difference between BFS and DFS on this tree"</div>
+      </div>
+    </div>
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Mathematics</div></div><span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <div class="prompt-block"><span class="pm-label">starter prompts</span>"Show me why the derivative of x² is 2x using an interactive limit visualization"
+"Draw the geometric interpretation of the dot product of two vectors"
+"Show me Euler's identity visually on the complex plane — make it interactive"
+"Explain why integration gives area — show me with Riemann rectangles I can adjust"
+"Draw the transformation this matrix applies to the unit square: [[2,1],[0,3]]"</div>
+      </div>
+    </div>
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Physics &amp; Chemistry</div></div><span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <div class="prompt-block"><span class="pm-label">starter prompts</span>"Show me how a standing wave forms — with a frequency slider"
+"Draw a cross-section of a hydrogen atom with electron probability cloud"
+"Explain Le Chatelier's principle with an interactive equilibrium diagram"
+"Show me what happens to gas molecules in a container when I raise the temperature"
+"Draw the mechanism of an SN2 reaction with the nucleophile attacking"</div>
+      </div>
+    </div>
+    <div class="acc-item">
+      <div class="acc-trigger" onclick="toggleAcc(this)">
+        <div><div class="acc-trigger-title">Machine Learning &amp; AI</div></div><span class="acc-arrow">▼</span>
+      </div>
+      <div class="acc-body">
+        <div class="prompt-block"><span class="pm-label">starter prompts</span>"Show me gradient descent on a 2D loss surface with a learning rate slider"
+"Draw what a neural network actually does to classify a simple input — show activations"
+"Explain the attention mechanism in transformers — make the weights visible"
+"Show me how word embeddings cluster similar words in 2D space"
+"Draw the vanishing gradient problem — show what happens to gradients in deep networks"</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="callout purple" style="margin-top:24px">
+    <div class="callout-title">For your platform: pre-fill these as one-click actions</div>
+    <p style="margin:0;font-size:14px">The highest drop-off point in learner engagement is the blank input box. Pre-populate your chat UI with 3–4 subject-specific starter prompts as clickable chips. When a learner finishes viewing a diagram, show 2–3 contextual follow-up chips based on what they just saw. The clicks replace the cognitive load of formulating a question — and they reliably trigger the best visual outputs.</p>
+  </div>
+</section>
+
+</main>
+
+<script>
+// ── NAV ACTIVE STATE ─────────────────────────────────────
+const sections = document.querySelectorAll('section[id]');
+const navLinks  = document.querySelectorAll('nav a');
+const observer  = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const active = document.querySelector(`nav a[href="#${e.target.id}"]`);
+      if (active) active.classList.add('active');
+    }
+  });
+}, { threshold: 0.3 });
+sections.forEach(s => observer.observe(s));
+
+// ── LAYER TOGGLE ─────────────────────────────────────────
+function toggleLayer(el) {
+  el.classList.toggle('open');
+}
+
+// ── ACCORDION TOGGLE ──────────────────────────────────────
+function toggleAcc(trigger) {
+  trigger.closest('.acc-item').classList.toggle('open');
+}
+
+// ── TABS ─────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── STREAM SIMULATION ────────────────────────────────────
+const streamChunks = [
+  {t:'prose', sse:'Here is a diagram of', state:'streaming prose → appending to chat', render:'chat text updates live'},
+  {t:'prose', sse:'how gradient descent works.', state:'streaming prose continues', render:'chat text updates live'},
+  {t:'tool-start', sse:'[tool_use block detected: show_widget]', state:'tool block start → show loading spinner', render:'loading card: "Building the visualization…"'},
+  {t:'tool', sse:'title: "gradient_descent"', state:'accumulating tool call parameters', render:'loading card still visible'},
+  {t:'tool', sse:'loading_messages: ["Drawing the loss surface"]', state:'accumulating widget_code string...', render:'loading card: "Drawing the loss surface…"'},
+  {t:'tool', sse:'widget_code: "<svg width=\\"100%\\" viewBox=\\"0 0 680 300\\">"', state:'accumulating widget_code string...', render:'loading card still visible (code growing)'},
+  {t:'tool', sse:'<defs>... arrow marker ...</defs>', state:'accumulating SVG defs', render:'loading card still visible'},
+  {t:'tool', sse:'<g class=\\"node c-blue\\"><rect x=\\"60\\" y=\\"80\\"', state:'accumulating shape elements', render:'loading card still visible'},
+  {t:'tool', sse:'width=\\"160\\" height=\\"44\\" rx=\\"8\\"/><text', state:'accumulating text elements', render:'loading card still visible'},
+  {t:'tool', sse:'class=\\"th\\">Input</text></g>...', state:'accumulating more shapes', render:'loading card still visible'},
+  {t:'tool-end', sse:'[tool_use block closed — code complete]', state:'widget_code complete → inject into iframe srcdoc', render:'iframe renders — SVG painted by browser ✓'},
+  {t:'prose', sse:'Click any node for a deeper explanation.', state:'streaming prose resumes', render:'diagram live + chat text updating'},
+];
+const colors = {'prose':'#9b9890','tool-start':'#ef9f27','tool':'#378add','tool-end':'#639922'};
+let streamRunning = false;
+
+async function runStream() {
+  if (streamRunning) return;
+  streamRunning = true;
+  const sse = document.getElementById('s-sse');
+  const state = document.getElementById('s-state');
+  const render = document.getElementById('s-render');
+  sse.textContent = ''; state.textContent = ''; render.textContent = '';
+  for (const c of streamChunks) {
+    await new Promise(r => setTimeout(r, 350));
+    const span = document.createElement('span');
+    span.textContent = c.sse + ' ';
+    span.style.color = colors[c.t] || '#9b9890';
+    sse.appendChild(span);
+    sse.scrollTop = sse.scrollHeight;
+    state.textContent = c.state;
+    state.style.color = colors[c.t] || '#9b9890';
+    render.textContent = c.render;
+    render.style.color = c.t === 'tool-end' ? '#639922' : '#9b9890';
+  }
+  streamRunning = false;
+}
+
+// ── COLOR SWATCHES ────────────────────────────────────────
+const palette = [
+  {name:'purple', stops:['#EEEDFE','#CECBF6','#AFA9EC','#7F77DD','#534AB7','#3C3489','#26215C'], tl:['#3C3489','#3C3489','#3C3489','#fff','#fff','#CECBF6','#CECBF6']},
+  {name:'teal',   stops:['#E1F5EE','#9FE1CB','#5DCAA5','#1D9E75','#0F6E56','#085041','#04342C'], tl:['#085041','#085041','#085041','#fff','#fff','#9FE1CB','#9FE1CB']},
+  {name:'amber',  stops:['#FAEEDA','#FAC775','#EF9F27','#BA7517','#854F0B','#633806','#412402'], tl:['#633806','#633806','#633806','#fff','#fff','#FAC775','#FAC775']},
+  {name:'coral',  stops:['#FAECE7','#F5C4B3','#F0997B','#D85A30','#993C1D','#712B13','#4A1B0C'], tl:['#712B13','#712B13','#712B13','#fff','#fff','#F5C4B3','#F5C4B3']},
+  {name:'blue',   stops:['#E6F1FB','#B5D4F4','#85B7EB','#378ADD','#185FA5','#0C447C','#042C53'], tl:['#0C447C','#0C447C','#0C447C','#fff','#fff','#B5D4F4','#B5D4F4']},
+  {name:'green',  stops:['#EAF3DE','#C0DD97','#97C459','#639922','#3B6D11','#27500A','#173404'], tl:['#27500A','#27500A','#27500A','#fff','#fff','#C0DD97','#C0DD97']},
+  {name:'pink',   stops:['#FBEAF0','#F4C0D1','#ED93B1','#D4537E','#993556','#72243E','#4B1528'], tl:['#72243E','#72243E','#72243E','#fff','#fff','#F4C0D1','#F4C0D1']},
+  {name:'gray',   stops:['#F1EFE8','#D3D1C7','#B4B2A9','#888780','#5F5E5A','#444441','#2C2C2A'], tl:['#444441','#444441','#444441','#fff','#fff','#D3D1C7','#D3D1C7']},
+  {name:'red',    stops:['#FCEBEB','#F7C1C1','#F09595','#E24B4A','#A32D2D','#791F1F','#501313'], tl:['#791F1F','#791F1F','#791F1F','#fff','#fff','#F7C1C1','#F7C1C1']},
+];
+const stopLabels = ['50','100','200','400','600','800','900'];
+const swatchContainer = document.getElementById('swatches');
+palette.forEach(ramp => {
+  const row = document.createElement('div');
+  row.className = 'ramp-row';
+  row.innerHTML = `<span class="ramp-name">${ramp.name}</span>`;
+  ramp.stops.forEach((hex, i) => {
+    const d = document.createElement('div');
+    d.className = 'swatch';
+    d.style.background = hex;
+    d.title = `${ramp.name}-${stopLabels[i]}: ${hex}`;
+    d.innerHTML = `<span class="sw-lbl" style="color:${ramp.tl[i]}">${stopLabels[i]}</span>`;
+    row.appendChild(d);
+  });
+  swatchContainer.appendChild(row);
+});
+</script>
+
+</body>
+</html>

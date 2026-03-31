@@ -1,0 +1,102 @@
+# Environment variables
+.env
+.env.local
+.env.*.local
+docs/.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.dmypy.json
+.pyre/
+.pytype/
+cython_debug/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Node/Frontend
+node_modules/
+dist/
+dist-ssr/
+build/
+out/
+.next/
+.parcel-cache/
+*.local
+
+# Logs
+*.log
+*.log.*
+logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Lock files (choose one based on your package manager)
+# Uncomment the one you use, comment out others
+# package-lock.json
+# yarn.lock
+# pnpm-lock.yaml
+# bun.lock
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Testing
+coverage/
+.nyc_output/
+
+# Archives
+*.tgz
+*.tar.gz
+
+# Data/SQLite
+data/*.db
+
+# Demo/output artifacts
+offline_demo_*/
+
+# Misc
+.cache/
+*.pem
