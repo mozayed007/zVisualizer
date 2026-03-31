@@ -100,3 +100,4 @@ offline_demo_*/
 # Misc
 .cache/
 *.pem
+*.env
