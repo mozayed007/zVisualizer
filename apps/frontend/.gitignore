@@ -33,3 +33,4 @@ coverage
 # Cache
 .eslintcache
 .stylelintcache
+scripts/

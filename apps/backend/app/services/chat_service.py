@@ -9,6 +9,7 @@ from collections.abc import AsyncIterator
 from dataclasses import dataclass, field
 from functools import cached_property
 from typing import Any, cast
+from urllib.parse import urlparse
 
 import orjson
 from pydantic import BaseModel
@@ -23,6 +24,7 @@ from pydantic_ai import (
     TextPartDelta,
     ThinkingPartDelta,
 )
+from pydantic_ai.builtin_tools import WebFetchTool, WebSearchTool
 from pydantic_ai.exceptions import ModelHTTPError, ModelRetry, UnexpectedModelBehavior
 from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
@@ -45,7 +47,18 @@ from app.repositories.conversations import (
 )
 from app.services.model_limits import GeminiRateLimiter, estimate_tokens
 
+WEB_SEARCH_MAX_USES_PER_TURN = 2
+WEB_FETCH_MAX_USES_PER_TURN = 3
+WEB_FETCH_MAX_CONTENT_TOKENS = 4000
 logger = logging.getLogger(__name__)
+URL_PATTERN = re.compile(r"https?://[^\s<>()\[\]{}\"']+", re.IGNORECASE)
+EXTERNAL_SEARCH_KEYWORDS = (
+    "latest",
+    "current",
+    "today",
+    "recent",
+    "news",
+)
 
 
 def encode_sse(event: StreamEvent) -> str:
@@ -112,6 +125,9 @@ class ChatService:
         self.rate_limiter = GeminiRateLimiter(self.settings)
         self._agent_cache: dict[str, Agent[AgentDependencies, str]] = {}
         self._visual_agent_cache: dict[str, Agent[AgentDependencies, VisualWidgetDraft]] = {}
+        self._context_agent_cache: dict[str, Agent[AgentDependencies, str]] = {}
+        self._allowed_url_domains = self.settings.resolve_google_allowed_url_domains()
+        self._google_builtin_tools = self._build_google_builtin_tools()
 
     @cached_property
     def provider(self) -> GoogleProvider:
@@ -152,6 +168,7 @@ class ChatService:
             learner_profile = ctx.deps.conversation.learner_profile
             concepts_seen = ", ".join(learner_profile.concepts_seen) or "none"
             struggling_with = ", ".join(learner_profile.struggling_with) or "none"
+            disallowed_hosts = self._extract_disallowed_url_hosts(ctx.deps.user_message)
             lines = [
                 f"Conversation subject: {ctx.deps.conversation.subject or 'general'}.",
                 f"Concepts already visualized: {concepts_seen}.",
@@ -159,6 +176,22 @@ class ChatService:
                 f"Interaction count: {learner_profile.interaction_count}.",
                 f"Latest learner request: {ctx.deps.user_message}",
             ]
+            if self.settings.google_enable_url_context:
+                lines.append(
+                    "If the learner asks what a link says, use the URL context tool for allowed domains. "
+                    "If a URL domain is not allowed, explicitly say it is outside the allowlist and ask for "
+                    "an allowlisted source or domain override."
+                )
+            if self.settings.google_enable_web_search:
+                lines.append(
+                    "Use web search for up-to-date context when needed, but prioritize URL context for direct "
+                    "link-explainer requests."
+                )
+            if disallowed_hosts:
+                lines.append(
+                    "Non-allowlisted URL host(s) detected in this request: "
+                    f"{', '.join(disallowed_hosts)}. Do not claim to have read those links."
+                )
             if ctx.deps.from_widget:
                 lines.append(
                     f"The learner is following up from the '{ctx.deps.from_widget}' visual; "
@@ -237,6 +270,151 @@ class ChatService:
 
         self._agent_cache[model_name] = built_agent
         return built_agent
+
+    def _build_google_builtin_tools(self) -> list[object]:
+        tools: list[object] = []
+        if self.settings.google_enable_web_search:
+            tools.append(WebSearchTool(max_uses=WEB_SEARCH_MAX_USES_PER_TURN))
+        if self.settings.google_enable_url_context:
+            tools.append(
+                WebFetchTool(
+                    max_uses=WEB_FETCH_MAX_USES_PER_TURN,
+                    allowed_domains=self._allowed_url_domains or None,
+                    enable_citations=True,
+                    max_content_tokens=WEB_FETCH_MAX_CONTENT_TOKENS,
+                )
+            )
+        return tools
+
+    @staticmethod
+    def _extract_urls(message: str) -> list[str]:
+        urls: list[str] = []
+        seen: set[str] = set()
+        for raw in URL_PATTERN.findall(message):
+            cleaned = raw.rstrip(".,;:!?)]}\"")
+            if cleaned and cleaned not in seen:
+                seen.add(cleaned)
+                urls.append(cleaned)
+        return urls
+
+    @staticmethod
+    def _domain_matches_rule(host: str, rule: str) -> bool:
+        normalized_host = host.strip().lower().rstrip(".")
+        normalized_rule = rule.strip().lower().rstrip(".")
+        if not normalized_host or not normalized_rule:
+            return False
+        if normalized_rule.startswith("*."):
+            suffix = normalized_rule[2:]
+            return normalized_host == suffix or normalized_host.endswith(f".{suffix}")
+        return normalized_host == normalized_rule
+
+    def _is_allowed_url_host(self, host: str) -> bool:
+        return any(
+            self._domain_matches_rule(host, domain_rule)
+            for domain_rule in self._allowed_url_domains
+        )
+
+    def _extract_disallowed_url_hosts(self, message: str) -> list[str]:
+        hosts: list[str] = []
+        seen_hosts: set[str] = set()
+        for url in self._extract_urls(message):
+            parsed = urlparse(url)
+            if parsed.scheme not in {"http", "https"}:
+                continue
+            host = (parsed.hostname or "").strip().lower().rstrip(".")
+            if not host or host in seen_hosts:
+                continue
+            if self._is_allowed_url_host(host):
+                continue
+            seen_hosts.add(host)
+            hosts.append(host)
+        return hosts
+
+    def _should_fetch_external_context(self, message: str) -> bool:
+        if not self._google_builtin_tools:
+            return False
+        if self.settings.google_enable_url_context and self._extract_urls(message):
+            return True
+        lowered = message.lower()
+        return self.settings.google_enable_web_search and any(
+            keyword in lowered for keyword in EXTERNAL_SEARCH_KEYWORDS
+        )
+
+    @staticmethod
+    def _augment_prompt_with_external_context(user_message: str, context_block: str) -> str:
+        return (
+            f"{user_message}\n\n"
+            "External context (use as supporting evidence, do not invent beyond it):\n"
+            f"{context_block}"
+        )
+
+    def get_context_agent(self, model_name: str) -> Agent[AgentDependencies, str]:
+        cached_agent = self._context_agent_cache.get(model_name)
+        if cached_agent is not None:
+            return cached_agent
+
+        model = GoogleModel(
+            model_name,
+            provider=self.provider,
+        )
+        model_settings = self._google_model_settings(temperature=0.1)
+        built_agent = Agent[AgentDependencies, str](
+            model,
+            deps_type=AgentDependencies,
+            instructions=(
+                "Retrieve concise factual context using available built-in tools. "
+                "For link requests, prioritize URL context. For freshness requests, use web search. "
+                "If a URL is blocked by allowlist, state that clearly."
+            ),
+            model_settings=model_settings,
+            builtin_tools=self._google_builtin_tools,
+            retries=1,
+            output_retries=1,
+        )
+        self._context_agent_cache[model_name] = built_agent
+        return built_agent
+
+    async def _fetch_external_context(
+        self,
+        *,
+        user_message: str,
+        model_name: str,
+        deps: AgentDependencies,
+        message_history: Any,
+    ) -> str | None:
+        if not self._should_fetch_external_context(user_message):
+            return None
+
+        context_agent = self.get_context_agent(model_name)
+        prompt = (
+            "Gather external context for the learner request. "
+            "Return concise bullet points with citations/domains where possible. "
+            "If any URL is blocked by allowlist, include that explicitly.\n\n"
+            f"Learner request:\n{user_message}"
+        )
+        try:
+            result = await context_agent.run(
+                prompt,
+                deps=deps,
+                message_history=message_history,
+            )
+        except Exception:
+            logger.warning(
+                "external-context-fetch-failed",
+                extra={
+                    "extra_data": {
+                        "conversation_id": deps.conversation.id,
+                        "model": model_name,
+                    }
+                },
+                exc_info=True,
+            )
+            return None
+
+        context_text = (result.output or "").strip()
+        if not context_text:
+            return None
+        return context_text[:6000]
 
     def get_visual_agent(self, model_name: str) -> Agent[AgentDependencies, VisualWidgetDraft]:
         cached_agent = self._visual_agent_cache.get(model_name)
@@ -320,10 +498,9 @@ class ChatService:
             )
 
             history = self._load_history_with_budget(conversation)
-            estimated_input_tokens = self._estimate_request_tokens(request.message, history)
-            self.rate_limiter.check_and_reserve(estimated_input_tokens, client_id=client_id)
             event_sink = StreamEventSink()
             wants_visual = self._request_needs_visual(request.message)
+            active_model_name = self._resolve_primary_model_name(request.model)
             deps = AgentDependencies(
                 config=self.config,
                 conversation=conversation,
@@ -332,6 +509,33 @@ class ChatService:
                 user_message=request.message,
                 from_widget=request.from_widget,
             )
+            prompt_for_model = request.message
+            if self._should_fetch_external_context(request.message):
+                yield encode_sse(
+                    StreamEvent(
+                        type="status",
+                        data={
+                            "stage": "gathering_context",
+                            "label": "Gathering external context",
+                            "detail": "Collecting source context from links/web before drafting.",
+                            "state": "active",
+                        },
+                    )
+                )
+                external_context = await self._fetch_external_context(
+                    user_message=request.message,
+                    model_name=active_model_name,
+                    deps=deps,
+                    message_history=history,
+                )
+                if external_context is not None:
+                    prompt_for_model = self._augment_prompt_with_external_context(
+                        request.message,
+                        external_context,
+                    )
+
+            estimated_input_tokens = self._estimate_request_tokens(prompt_for_model, history)
+            self.rate_limiter.check_and_reserve(estimated_input_tokens, client_id=client_id)
 
             yield encode_sse(
                 StreamEvent(
@@ -344,6 +548,7 @@ class ChatService:
             )
 
             text_started = False
+            assistant_started_emitted = False
             had_widget = False
 
             yield encode_sse(
@@ -360,7 +565,6 @@ class ChatService:
                     },
                 )
             )
-            active_model_name = self._resolve_primary_model_name(request.model)
             stream_fallback_model = self._resolve_stream_fallback_model_name(active_model_name)
             logger.info(
                 "chat-model-primary",
@@ -391,7 +595,7 @@ class ChatService:
 
             try:
                 async for event in self._run_stream_events_with_retries(
-                    prompt=request.message,
+                    prompt=prompt_for_model,
                     model_name=active_model_name,
                     deps=deps,
                     message_history=history,
@@ -399,12 +603,12 @@ class ChatService:
                     if isinstance(event, PartStartEvent):
                         part = event.part
                         part_kind = getattr(part, "part_kind", None)
-                        
+
                         if part_kind == "thinking":
                             content = getattr(part, "content", "")
-                            
+
                             # Signal thinking started to clear "Queued" state
-                            if not text_started:
+                            if not assistant_started_emitted:
                                 yield encode_sse(
                                     StreamEvent(
                                         type="status",
@@ -417,13 +621,14 @@ class ChatService:
                                     )
                                 )
                                 yield encode_sse(StreamEvent(type="assistant_started"))
-                            
+                                assistant_started_emitted = True
+
                             if content:
                                 yield encode_sse(
                                     StreamEvent(type="thinking_delta", data={"text": content})
                                 )
                             continue
-                            
+
                         if part_kind == "tool-call":
                             tool_name = getattr(part, "tool_name", None)
                             if tool_name == "show_widget":
@@ -469,9 +674,14 @@ class ChatService:
                                     },
                                 )
                             )
-                            # We don't emit assistant_started here if we already emitted it in thinking
-                            # But if the model skipped thinking, we need to emit it
-                            yield encode_sse(StreamEvent(type="assistant_started"))
+                            if not assistant_started_emitted:
+                                yield encode_sse(StreamEvent(type="assistant_started"))
+                                assistant_started_emitted = True
+
+                        part_content = getattr(part, "content", "")
+                        if part_content:
+                            yielded_stream_content = True
+                            yield encode_sse(StreamEvent(type="text_delta", data={"text": part_content}))
 
                     if isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
                         if not event.delta.content_delta:
@@ -490,7 +700,9 @@ class ChatService:
                                     },
                                 )
                             )
-                            yield encode_sse(StreamEvent(type="assistant_started"))
+                            if not assistant_started_emitted:
+                                yield encode_sse(StreamEvent(type="assistant_started"))
+                                assistant_started_emitted = True
                         yield encode_sse(
                             StreamEvent(type="text_delta", data={"text": event.delta.content_delta})
                         )
@@ -499,8 +711,7 @@ class ChatService:
                         event.delta, ThinkingPartDelta
                     ):
                         if event.delta.content_delta:
-                            # Also signal text started here just in case PartStartEvent didn't catch it
-                            if not text_started:
+                            if not assistant_started_emitted:
                                 yield encode_sse(
                                     StreamEvent(
                                         type="status",
@@ -513,7 +724,8 @@ class ChatService:
                                     )
                                 )
                                 yield encode_sse(StreamEvent(type="assistant_started"))
-                                
+                                assistant_started_emitted = True
+
                             yield encode_sse(
                                 StreamEvent(
                                     type="thinking_delta",

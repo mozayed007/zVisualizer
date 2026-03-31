@@ -8,6 +8,298 @@ interface WidgetFrameProps {
   onPrompt: (text: string) => void
 }
 
+function isSvgMarkup(code: string): boolean {
+  return code.trimStart().toLowerCase().startsWith('<svg')
+}
+
+const SVG_COMPUTED_STYLE_PROPERTIES = [
+  'fill',
+  'fill-opacity',
+  'stroke',
+  'stroke-width',
+  'stroke-opacity',
+  'stroke-linecap',
+  'stroke-linejoin',
+  'stroke-miterlimit',
+  'stroke-dasharray',
+  'stroke-dashoffset',
+  'opacity',
+  'font-family',
+  'font-size',
+  'font-style',
+  'font-weight',
+  'letter-spacing',
+  'word-spacing',
+  'text-anchor',
+  'dominant-baseline',
+  'vector-effect',
+  'paint-order',
+  'shape-rendering',
+  'text-rendering',
+  'visibility',
+  'display',
+] as const
+
+const SVG_PRESENTATION_ATTRIBUTES: ReadonlyArray<readonly [string, string]> = [
+  ['fill', 'fill'],
+  ['fill-opacity', 'fill-opacity'],
+  ['stroke', 'stroke'],
+  ['stroke-width', 'stroke-width'],
+  ['stroke-opacity', 'stroke-opacity'],
+  ['stroke-linecap', 'stroke-linecap'],
+  ['stroke-linejoin', 'stroke-linejoin'],
+  ['stroke-miterlimit', 'stroke-miterlimit'],
+  ['stroke-dasharray', 'stroke-dasharray'],
+  ['stroke-dashoffset', 'stroke-dashoffset'],
+  ['opacity', 'opacity'],
+  ['font-family', 'font-family'],
+  ['font-size', 'font-size'],
+  ['font-style', 'font-style'],
+  ['font-weight', 'font-weight'],
+  ['letter-spacing', 'letter-spacing'],
+  ['word-spacing', 'word-spacing'],
+  ['text-anchor', 'text-anchor'],
+  ['dominant-baseline', 'dominant-baseline'],
+  ['vector-effect', 'vector-effect'],
+  ['paint-order', 'paint-order'],
+  ['shape-rendering', 'shape-rendering'],
+  ['text-rendering', 'text-rendering'],
+]
+
+function withSvgNamespace(svgText: string): string {
+  if (/\sxmlns\s*=\s*['"]http:\/\/www\.w3\.org\/2000\/svg['"]/i.test(svgText)) {
+    return svgText
+  }
+  return svgText.replace(/<svg\b/i, '<svg xmlns="http://www.w3.org/2000/svg"')
+}
+
+function resolveCssVarReferences(value: string, computedStyle: CSSStyleDeclaration): string {
+  let resolved = value
+
+  for (let i = 0; i < 8 && /var\(/.test(resolved); i += 1) {
+    resolved = resolved.replace(/var\(\s*(--[a-z0-9_-]+)\s*(?:,\s*([^)]+))?\)/gi, (_, varName, fallback) => {
+      const customValue = computedStyle.getPropertyValue(varName).trim()
+      if (customValue) {
+        return customValue
+      }
+      return typeof fallback === 'string' ? fallback.trim() : ''
+    })
+  }
+
+  return resolved.trim()
+}
+
+function inlineComputedStylesForPortableSvg(
+  originalSvg: SVGSVGElement,
+  clonedSvg: SVGSVGElement,
+  win: Window,
+): void {
+  const originalElements = [originalSvg, ...Array.from(originalSvg.querySelectorAll<SVGElement>('*'))]
+  const clonedElements = [clonedSvg, ...Array.from(clonedSvg.querySelectorAll<SVGElement>('*'))]
+  const size = Math.min(originalElements.length, clonedElements.length)
+
+  for (let i = 0; i < size; i += 1) {
+    const sourceNode = originalElements[i]
+    const targetNode = clonedElements[i]
+    const computedStyle = win.getComputedStyle(sourceNode)
+
+    const computedDeclarations: string[] = []
+    for (const property of SVG_COMPUTED_STYLE_PROPERTIES) {
+      const value = computedStyle.getPropertyValue(property).trim()
+      if (!value) {
+        continue
+      }
+      const resolvedValue = resolveCssVarReferences(value, computedStyle)
+      if (!resolvedValue) {
+        continue
+      }
+      computedDeclarations.push(`${property}:${resolvedValue}`)
+    }
+
+    if (computedDeclarations.length > 0) {
+      const existingStyle = targetNode.getAttribute('style')?.trim() ?? ''
+      const stylePrefix = existingStyle ? `${existingStyle}${existingStyle.endsWith(';') ? '' : ';'}` : ''
+      targetNode.setAttribute('style', `${stylePrefix}${computedDeclarations.join(';')};`)
+    }
+
+    for (const [cssProperty, attributeName] of SVG_PRESENTATION_ATTRIBUTES) {
+      const value = computedStyle.getPropertyValue(cssProperty).trim()
+      if (!value) {
+        continue
+      }
+      const resolvedValue = resolveCssVarReferences(value, computedStyle)
+      if (!resolvedValue) {
+        continue
+      }
+      targetNode.setAttribute(attributeName, resolvedValue)
+    }
+  }
+}
+
+function extractMarkerIdFromUrl(markerReference: string): string | null {
+  const match = markerReference.trim().match(/^url\(\s*['"]?#([^)\s'"]+)['"]?\s*\)$/i)
+  return match?.[1] ?? null
+}
+
+function getElementPaintColor(element: SVGElement, attributeName: 'fill' | 'stroke'): string | null {
+  const attributeValue = element.getAttribute(attributeName)?.trim() ?? ''
+  if (
+    attributeValue &&
+    !/^context-(?:stroke|fill)$/i.test(attributeValue) &&
+    !/\bvar\(/i.test(attributeValue)
+  ) {
+    return attributeValue
+  }
+
+  const inlineStyleValue = element.style.getPropertyValue(attributeName).trim()
+  if (
+    inlineStyleValue &&
+    !/^context-(?:stroke|fill)$/i.test(inlineStyleValue) &&
+    !/\bvar\(/i.test(inlineStyleValue)
+  ) {
+    return inlineStyleValue
+  }
+
+  return null
+}
+
+function resolveMarkerContextPaint(clonedSvg: SVGSVGElement): void {
+  const markerColors = new Map<string, { stroke: string | null; fill: string | null }>()
+  const referencingElements = clonedSvg.querySelectorAll<SVGElement>('[marker-start],[marker-mid],[marker-end]')
+
+  for (const element of referencingElements) {
+    const strokeColor = getElementPaintColor(element, 'stroke')
+    const fillColor = getElementPaintColor(element, 'fill')
+    const markerReferences = [
+      element.getAttribute('marker-start'),
+      element.getAttribute('marker-mid'),
+      element.getAttribute('marker-end'),
+    ]
+
+    for (const markerReference of markerReferences) {
+      if (!markerReference) {
+        continue
+      }
+      const markerId = extractMarkerIdFromUrl(markerReference)
+      if (!markerId || markerColors.has(markerId)) {
+        continue
+      }
+      markerColors.set(markerId, { stroke: strokeColor, fill: fillColor })
+    }
+  }
+
+  if (markerColors.size === 0) {
+    return
+  }
+
+  const markers = clonedSvg.querySelectorAll<SVGMarkerElement>('marker[id]')
+  for (const marker of markers) {
+    const markerId = marker.getAttribute('id')
+    if (!markerId) {
+      continue
+    }
+    const markerColor = markerColors.get(markerId)
+    if (!markerColor) {
+      continue
+    }
+
+    const markerNodes = [marker, ...Array.from(marker.querySelectorAll<SVGElement>('*'))]
+    for (const node of markerNodes) {
+      const fillValue = node.getAttribute('fill')
+      if (fillValue && /context-fill|context-stroke/i.test(fillValue)) {
+        const resolvedFill = fillValue
+          .replace(/context-stroke/gi, markerColor.stroke ?? 'none')
+          .replace(/context-fill/gi, markerColor.fill ?? 'none')
+        node.setAttribute('fill', resolvedFill)
+      }
+
+      const strokeValue = node.getAttribute('stroke')
+      if (strokeValue && /context-fill|context-stroke/i.test(strokeValue)) {
+        const resolvedStroke = strokeValue
+          .replace(/context-stroke/gi, markerColor.stroke ?? 'none')
+          .replace(/context-fill/gi, markerColor.fill ?? 'none')
+        node.setAttribute('stroke', resolvedStroke)
+      }
+
+      const styleValue = node.getAttribute('style')
+      if (styleValue && /context-fill|context-stroke/i.test(styleValue)) {
+        const resolvedStyle = styleValue
+          .replace(/context-stroke/gi, markerColor.stroke ?? 'none')
+          .replace(/context-fill/gi, markerColor.fill ?? 'none')
+        node.setAttribute('style', resolvedStyle)
+      }
+    }
+  }
+}
+
+function serializePortableRenderedSvg(renderedSvg: SVGSVGElement): string {
+  const ownerWindow = renderedSvg.ownerDocument.defaultView
+  if (!ownerWindow) {
+    return new XMLSerializer().serializeToString(renderedSvg)
+  }
+
+  const portableClone = renderedSvg.cloneNode(true) as SVGSVGElement
+  inlineComputedStylesForPortableSvg(renderedSvg, portableClone, ownerWindow)
+  resolveMarkerContextPaint(portableClone)
+
+  if (!portableClone.getAttribute('xmlns')) {
+    portableClone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
+  }
+  if (!portableClone.getAttribute('xmlns:xlink')) {
+    portableClone.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink')
+  }
+
+  return new XMLSerializer().serializeToString(portableClone)
+}
+
+function buildFallbackResolvedStyleBlock(doc: Document | null): string {
+  const rootStyle = doc ? doc.defaultView?.getComputedStyle(doc.documentElement) : null
+  const readToken = (tokenName: string, fallback: string) => {
+    const value = rootStyle?.getPropertyValue(tokenName).trim()
+    return value || fallback
+  }
+
+  return [
+    ':root{',
+    `--color-background-primary:${readToken('--color-background-primary', '#ffffff')};`,
+    `--color-background-secondary:${readToken('--color-background-secondary', '#f4f2eb')};`,
+    `--color-text-primary:${readToken('--color-text-primary', '#1a1918')};`,
+    `--color-text-secondary:${readToken('--color-text-secondary', '#5a5855')};`,
+    `--color-border-secondary:${readToken('--color-border-secondary', 'rgba(0, 0, 0, 0.14)')};`,
+    `--font-sans:${readToken('--font-sans', "'Plus Jakarta Sans', system-ui, sans-serif")};`,
+    `--p:${readToken('--p', readToken('--color-text-primary', '#1a1918'))};`,
+    `--s:${readToken('--s', readToken('--color-text-secondary', '#5a5855'))};`,
+    `--t:${readToken('--t', readToken('--color-text-secondary', '#5a5855'))};`,
+    `--bg2:${readToken('--bg2', readToken('--color-background-secondary', '#f4f2eb'))};`,
+    `--b:${readToken('--b', readToken('--color-border-secondary', 'rgba(0, 0, 0, 0.14)'))};`,
+    '}',
+    '.box{fill:var(--color-background-secondary);stroke:var(--color-border-secondary);stroke-width:0.5;rx:12}',
+    '.th,.t,.ts{dominant-baseline:central;font-family:var(--font-sans)}',
+    '.th{font-size:14px;font-weight:500;fill:var(--color-text-primary)}',
+    '.t{font-size:14px;font-weight:400;fill:var(--color-text-primary)}',
+    '.ts{font-size:12px;font-weight:400;fill:var(--color-text-secondary)}',
+    '.arr{fill:none;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;stroke:var(--color-border-secondary)}',
+  ].join('')
+}
+
+function injectFallbackResolvedStyleBlock(svgText: string, doc: Document | null): string {
+  const styleBlock = buildFallbackResolvedStyleBlock(doc)
+  const styleTag = `<style>${styleBlock}</style>`
+  if (/<svg\b[^>]*>/i.test(svgText)) {
+    return svgText.replace(/<svg\b([^>]*)>/i, `<svg$1>${styleTag}`)
+  }
+  return svgText
+}
+
+function toSafeSvgFilename(title: string): string {
+  const normalized = title
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, '_')
+    .replace(/^_+|_+$/g, '')
+  return `${normalized || 'visual'}.svg`
+}
+
 function formatWidgetTitle(title: string): string {
   return title.replace(/_/g, ' ')
 }
@@ -72,6 +364,7 @@ function syncIframeDesignTokens(iframe: HTMLIFrameElement | null) {
 function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
   const [height, setHeight] = useState(180)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
+  const [isDownloadingSvg, setIsDownloadingSvg] = useState(false)
   const iframeRef = useRef<HTMLIFrameElement | null>(null)
 
   const displayTitle = formatWidgetTitle(widget.title)
@@ -104,7 +397,13 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
       const iframeWindow = iframeRef.current?.contentWindow
-      if (event.source !== iframeWindow || event.data?.widgetTitle !== widget.title) {
+      if (event.source !== iframeWindow) {
+        return
+      }
+
+      const eventWidgetTitle =
+        typeof event.data?.widgetTitle === 'string' ? event.data.widgetTitle : null
+      if (eventWidgetTitle !== null && eventWidgetTitle !== widget.title) {
         return
       }
 
@@ -150,8 +449,64 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
     return () => window.removeEventListener('message', onMessage)
   }, [onPrompt, widget.title])
 
+  const canDownloadSvg = widget.kind === 'svg'
+
+  const handleDownloadSvg = () => {
+    setIsDownloadingSvg(true)
+    try {
+      const iframeDoc = iframeRef.current?.contentDocument ?? null
+      const renderedSvg = iframeRef.current?.contentDocument?.querySelector<SVGSVGElement>('svg')
+      const serializedRenderedSvg = renderedSvg
+        ? serializePortableRenderedSvg(renderedSvg)
+        : null
+      const fallbackSvg = isSvgMarkup(widget.widget_code)
+        ? injectFallbackResolvedStyleBlock(widget.widget_code.trim(), iframeDoc)
+        : null
+      const svgContent = serializedRenderedSvg ?? fallbackSvg
+
+      if (!svgContent) {
+        setRuntimeError('Unable to export SVG from this visual.')
+        return
+      }
+
+      const namespacedSvg = withSvgNamespace(svgContent)
+      const downloadableSvg = namespacedSvg.startsWith('<?xml')
+        ? namespacedSvg
+        : `<?xml version="1.0" encoding="UTF-8"?>\n${namespacedSvg}`
+      const blob = new Blob([downloadableSvg], {
+        type: 'image/svg+xml;charset=utf-8',
+      })
+
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = toSafeSvgFilename(widget.title)
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+    } catch {
+      setRuntimeError('Unable to export SVG from this visual.')
+    } finally {
+      setIsDownloadingSvg(false)
+    }
+  }
+
   return (
     <>
+      {canDownloadSvg ? (
+        <div className="widget-actions">
+          <button
+            type="button"
+            className="widget-download-button"
+            onClick={handleDownloadSvg}
+            disabled={isDownloadingSvg}
+            aria-label={`Download ${displayTitle} as SVG`}
+          >
+            {isDownloadingSvg ? 'Preparing SVG…' : 'Download SVG'}
+          </button>
+        </div>
+      ) : null}
       {runtimeError ? (
         <div className="widget-runtime-error" role="status" aria-live="polite">
           This visual hit a runtime issue: {runtimeError}

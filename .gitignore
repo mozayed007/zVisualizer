@@ -101,3 +101,8 @@ offline_demo_*/
 .cache/
 *.pem
 *.env
+
+# Scripts logs and PID files
+scripts/logs/
+scripts/*.pid
+scripts/

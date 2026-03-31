@@ -2,10 +2,11 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+from typing import Annotated
 from typing import Literal
 
 from pydantic import AliasChoices, Field, SecretStr, field_validator
-from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from app.core.errors import ServiceUnavailableAppError
 
@@ -13,6 +14,20 @@ PROJECT_ROOT = Path(__file__).resolve().parents[4]
 BACKEND_ROOT = PROJECT_ROOT / "apps" / "backend"
 ROOT_ENV_PATH = PROJECT_ROOT / ".env"
 BACKEND_ENV_PATH = BACKEND_ROOT / ".env"
+DEFAULT_GOOGLE_ALLOWED_URL_DOMAINS = [
+    "github.com",
+    "*.github.com",
+    "medium.com",
+    "*.medium.com",
+    "dev.to",
+    "arxiv.org",
+    "docs.python.org",
+    "developer.mozilla.org",
+    "x.com",
+    "twitter.com",
+    "wikipedia.org",
+    "*.wikipedia.org",
+]
 
 
 class Settings(BaseSettings):
@@ -67,6 +82,14 @@ class Settings(BaseSettings):
     google_max_input_tokens: int = 120_000
     google_reserved_output_tokens: int = 12_288
     google_max_history_tokens: int = 90_000
+    google_enable_web_search: bool = True
+    google_enable_url_context: bool = True
+    google_allowed_url_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=lambda: list(DEFAULT_GOOGLE_ALLOWED_URL_DOMAINS)
+    )
+    google_extra_allowed_url_domains: Annotated[list[str], NoDecode] = Field(
+        default_factory=list
+    )
 
     max_conversation_turns: int = 200
     max_message_chars: int = 60_000
@@ -91,6 +114,15 @@ class Settings(BaseSettings):
     def expand_database_path(cls, value: object) -> object:
         if isinstance(value, str):
             return Path(value)
+        return value
+
+    @field_validator("google_allowed_url_domains", "google_extra_allowed_url_domains", mode="before")
+    @classmethod
+    def parse_google_domain_lists(cls, value: object) -> object:
+        if value is None:
+            return []
+        if isinstance(value, str):
+            return [item.strip() for item in value.split(",") if item.strip()]
         return value
 
     def require_google_api_key(self) -> str:
@@ -120,6 +152,24 @@ class Settings(BaseSettings):
         ):
             return self.google_fallback_model_name
         return None
+
+    def resolve_google_allowed_url_domains(self) -> list[str]:
+        merged_domains = [
+            *self.google_allowed_url_domains,
+            *self.google_extra_allowed_url_domains,
+        ]
+        normalized: list[str] = []
+        seen: set[str] = set()
+        for domain in merged_domains:
+            cleaned = domain.strip().lower().rstrip(".")
+            if cleaned.startswith("."):
+                cleaned = cleaned[1:]
+            if not cleaned:
+                continue
+            if cleaned not in seen:
+                seen.add(cleaned)
+                normalized.append(cleaned)
+        return normalized
 
     def resolve_google_visual_recovery_model_name(self, primary_model: str) -> str | None:
         if (

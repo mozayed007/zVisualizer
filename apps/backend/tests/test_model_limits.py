@@ -84,3 +84,17 @@ def test_settings_normalize_legacy_xhigh_thinking_level() -> None:
         "include_thoughts": True,
         "thinking_level": "high",
     }
+
+
+def test_settings_merge_and_normalize_allowed_url_domains() -> None:
+    settings = Settings(
+        google_api_key=SecretStr("test-key"),
+        google_allowed_url_domains=" GitHub.com ,*.WIKIPEDIA.org,github.com ",
+        google_extra_allowed_url_domains="blog.example.com, *.Wikipedia.org ",
+    )
+
+    assert settings.resolve_google_allowed_url_domains() == [
+        "github.com",
+        "*.wikipedia.org",
+        "blog.example.com",
+    ]

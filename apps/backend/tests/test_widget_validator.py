@@ -1,5 +1,5 @@
 from app.agent.config import ToolConfig
-from app.agent.widget_validator import build_widget_payload
+from app.agent.widget_validator import SUPPORTED_COLOR_RAMP_CLASSES, build_widget_payload
 from app.core.errors import ValidationAppError
 
 
@@ -43,6 +43,40 @@ def test_rejects_standalone_svg_wrapped_in_top_level_style() -> None:
         assert "must start directly with <svg>" in exc.message
     else:
         raise AssertionError("Expected ValidationAppError")
+
+
+def test_supported_color_ramp_class_allowlist_is_exact() -> None:
+    assert SUPPORTED_COLOR_RAMP_CLASSES == {
+        "c-purple",
+        "c-teal",
+        "c-amber",
+        "c-coral",
+        "c-blue",
+        "c-green",
+        "c-pink",
+        "c-gray",
+        "c-red",
+    }
+
+
+def test_svg_accepts_all_supported_color_ramp_classes() -> None:
+    for ramp_class in sorted(SUPPORTED_COLOR_RAMP_CLASSES):
+        payload = build_widget_payload(
+            title=f"valid_{ramp_class.replace('-', '_')}",
+            loading_messages=["Building visual"],
+            widget_code=(
+                "<svg width='100%' viewBox='0 0 680 140'>"
+                "<defs><marker id='arrow' viewBox='0 0 10 10'></marker></defs>"
+                f"<g class='{ramp_class}'>"
+                "<rect x='40' y='30' width='120' height='44'></rect>"
+                "<text class='th' x='100' y='52' dominant-baseline='central'>Good</text>"
+                "</g>"
+                "</svg>"
+            ),
+            tool_config=ToolConfig(),
+        )
+
+        assert payload.kind == "svg"
 
 
 def test_html_widget_requires_style_before_scripts() -> None:

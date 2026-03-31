@@ -326,7 +326,7 @@ def build_visual_generation_prompt(
         "- use only host-supported tokens: c-{ramp}, --color-*, --font-*, --border-radius-*, and --p/--s/--t/--bg2/--b",
         "- never invent color variables like --c-purple-500",
         "- use exact token names like --color-text-info, not palette-stop tokens like --color-blue-200",
-        "- use exact ramp classes like c-blue, not c-blue-200",
+        "- use exact ramp classes only: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, c-pink, c-gray, c-red (never c-blue-200)",
         "Distilled Claude-style visual guidance:",
         "- visuals should teach with spatial structure, not repeat the prose",
         "- comparisons should place both concepts side by side with clear labels",
