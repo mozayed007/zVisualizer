@@ -20,7 +20,7 @@ A visual learning companion powered by **PydanticAI** and **Google Gemini**. Ask
 │              ▲                    │              ▲                          │
 │              │ widget_code        │              │ show_widget tool call    │
 │              │ (SVG/HTML)         │              │                          │
-│  ┌───────────┴────────────────┐   │  ┌──────────┴────────────────────────┐  │
+│  ┌───────────┴────────────────┐   │  ┌───────────┴───────────────────────┐  │
 │  │ App.tsx                    │   │  │ Agent (Gemini via PydanticAI)     │  │
 │  │ • Chat message management  │   │  │ • System prompt with skill docs   │  │
 │  │ • SSE event handling       │◄──┼──┤ • Structured output: WidgetPayload│  │
