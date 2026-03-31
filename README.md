@@ -111,6 +111,7 @@ The `WidgetFrame` component (`apps/frontend/src/components/WidgetFrame.tsx`) is 
 | **Design Token Injection** | Injects CSS variables, typography, and color ramps automatically into the iframe |
 | **Bidirectional Communication** | `postMessage` bridge for: `prompt` (click-to-ask), `open_link` (secure navigation), `widget_error` (error handling) |
 | **CSP Enforcement** | Content Security Policy restricts script sources to approved CDNs only |
+| **SVG Export (v0.1)** | Download rendered SVGs with computed styles inlined for portability — preserves colors, markers, and CSS variable resolution |
 
 #### Dependencies
 
@@ -155,6 +156,7 @@ class ChatService:
 - **Widget Caching**: LRU cache for validated widget payloads (max 100 items)
 - **Visual Recovery**: Fallback visual generation when the primary agent fails to produce a widget
 - **Rate Limiting**: Built-in Gemini API rate limiter with token estimation
+- **Web Search & Web Fetch**: Agent can search the web and fetch content to augment responses with current information
 
 #### B. Widget Validator (`apps/backend/app/agent/widget_validator.py`)
 
