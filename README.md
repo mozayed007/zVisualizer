@@ -219,7 +219,7 @@ User Request
 │ SSE Event Stream        │
 │  - assistant_started    │
 │  - thinking_delta       │
-│  - text_delta            │
+│  - text_delta           │
 │  - widget_loading       │
 │  - widget_ready         │
 │  - assistant_done       │
