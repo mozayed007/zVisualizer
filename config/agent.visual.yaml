@@ -1,6 +1,12 @@
 agent:
   name: visual-learning-companion
   provider: google-gla
+  # Available models (as of April 2026):
+  # - gemini-3.1-flash-lite-preview (fast, cost-effective)
+  # - gemini-3.1-flash-preview (balanced performance)
+  # - gemini-3.1-pro-preview (highest quality)
+  # Note: Gemma 4 models (E2B, E4B) are edge/on-device models via LiteRT-LM,
+  # not available through the Gemini API. See: https://ai.google.dev/edge
   model: gemini-3.1-flash-lite-preview
   subject_area: computer science, mathematics, data, and systems thinking
   learner_profile: motivated learners who benefit from visual intuition, progressive disclosure, and interactive follow-up prompts

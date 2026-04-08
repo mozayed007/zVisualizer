@@ -38,6 +38,54 @@ Response-style defaults:
 - prefer a visual when it materially helps
 - never stack visuals without connecting prose
 
+## Model configuration
+
+The agent uses Google Gemini models via the Gemini Developer API. Models are discovered dynamically from `https://generativelanguage.googleapis.com/v1beta/models` and cached for 5 minutes.
+
+### Default model
+
+Configured in `config/agent.visual.yaml`:
+- Default: `gemini-3.1-flash-lite-preview`
+
+Environment overrides (in order of precedence):
+1. `GOOGLE_MODEL_NAME` / `GEMINI_MODEL_NAME` env var
+2. `model` field in `config/agent.visual.yaml`
+3. Fallback: `gemini-3.1-flash-lite-preview`
+
+### Available Gemini models (as of April 2026)
+
+The following models are available through the Gemini API and discovered dynamically:
+
+| Model | Description |
+|-------|-------------|
+| `gemini-3.1-flash-lite-preview` | Fast, cost-effective default |
+| `gemini-3.1-flash-preview` | Balanced performance |
+| `gemini-3.1-pro-preview` | Highest quality, used for fallback/recovery |
+
+New Gemini models are automatically available once Google adds them to the API.
+
+### Fallback and recovery models
+
+Environment variables configure fallback behavior:
+
+- `GOOGLE_FALLBACK_MODEL_NAME` - Used when primary model returns 5xx errors (default: `gemini-3.1-pro-preview`)
+- `GOOGLE_VISUAL_RECOVERY_MODEL_NAME` - Stronger model for visual generation recovery (default: `gemini-3.1-pro-preview`)
+
+### Gemma 4 models (edge/on-device)
+
+**Important:** Gemma 4 models (E2B - 2B parameters, E4B - 4B parameters) are **not** available through the Gemini API. They are open-weights models designed for on-device inference via:
+
+- [LiteRT-LM](https://ai.google.dev/edge/litert-lm) - Local inference library
+- [Google AI Edge Gallery](https://github.com/google-ai-edge/gallery) - Mobile app for experimenting
+- Android AICore - System-wide on-device model access
+
+To use Gemma 4 models, you would need to:
+1. Run models locally via LiteRT-LM (Raspberry Pi 5, mobile devices, desktop)
+2. Set up a local inference endpoint
+3. Configure the agent to use that local endpoint instead of the Gemini API
+
+See: https://ai.google.dev/edge for more information on edge deployment.
+
 ## What the agent does
 
 At runtime, the main chat agent can:
