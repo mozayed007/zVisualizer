@@ -16,6 +16,10 @@ class ChatRequest(BaseModel):
     conversation_id: str | None = None
     message: str
     subject: str | None = None
+    agent_id: str | None = Field(
+        default=None,
+        description="Optional backend agent/profile identifier for this turn.",
+    )
     learner_profile: LearnerProfile | None = None
     model: str | None = Field(
         default=None,
@@ -33,6 +37,14 @@ class ChatRequest(BaseModel):
         if not text:
             raise ValueError("message cannot be empty")
         return text
+
+    @field_validator("agent_id")
+    @classmethod
+    def normalize_agent_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        return text or None
 
     @field_validator("model")
     @classmethod
@@ -70,6 +82,20 @@ class ModelCatalogResponse(BaseModel):
     models: list[AvailableModel]
 
 
+class AvailableAgent(BaseModel):
+    id: str
+    name: str
+    display_name: str
+    description: str | None = None
+    provider: str
+    default_model: str
+
+
+class AgentCatalogResponse(BaseModel):
+    default_agent_id: str
+    agents: list[AvailableAgent]
+
+
 class StreamEvent(BaseModel):
     type: str
     data: dict[str, Any] = Field(default_factory=dict)
@@ -81,6 +107,7 @@ class ConversationRecord(BaseModel):
     updated_at: datetime = Field(default_factory=lambda: datetime.now(UTC))
     turn_count: int = 0
     subject: str | None = None
+    agent_id: str | None = None
     learner_profile: LearnerProfile = Field(default_factory=LearnerProfile)
     message_history_json: str | None = None
 

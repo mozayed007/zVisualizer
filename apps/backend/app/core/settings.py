@@ -55,18 +55,48 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("GOOGLE_MODEL_NAME", "GEMINI_MODEL_NAME"),
     )
     google_fallback_model_name: str | None = Field(
-        default="gemini-3.1-pro-preview",
+        default="gemini-3-flash-preview",
         validation_alias=AliasChoices(
             "GOOGLE_FALLBACK_MODEL_NAME",
             "GEMINI_FALLBACK_MODEL_NAME",
         ),
     )
     google_visual_recovery_model_name: str | None = Field(
-        default="gemini-3.1-pro-preview",
+        default="gemini-3-flash-preview",
         validation_alias=AliasChoices(
             "GOOGLE_VISUAL_RECOVERY_MODEL_NAME",
             "GEMINI_VISUAL_RECOVERY_MODEL_NAME",
         ),
+    )
+    google_live_model_name: str | None = Field(
+        default="gemini-3.1-flash-live-preview",
+        validation_alias=AliasChoices("GOOGLE_LIVE_MODEL_NAME", "GEMINI_LIVE_MODEL_NAME"),
+    )
+    google_live_voice_name: str = Field(
+        default="Charon",
+        validation_alias=AliasChoices("GOOGLE_LIVE_VOICE_NAME", "GEMINI_LIVE_VOICE_NAME"),
+    )
+    google_live_language_code: str | None = Field(
+        default="en-US",
+        validation_alias=AliasChoices(
+            "GOOGLE_LIVE_LANGUAGE_CODE",
+            "GEMINI_LIVE_LANGUAGE_CODE",
+        ),
+    )
+    google_live_thinking_level: Literal["minimal", "low", "medium", "high"] = Field(
+        default="minimal",
+        validation_alias=AliasChoices(
+            "GOOGLE_LIVE_THINKING_LEVEL",
+            "GEMINI_LIVE_THINKING_LEVEL",
+        ),
+    )
+    google_service_tier: Literal[
+        "SERVICE_TIER_STANDARD",
+        "SERVICE_TIER_PRIORITY",
+        "SERVICE_TIER_FLEX",
+    ] = Field(
+        default="SERVICE_TIER_PRIORITY",
+        validation_alias=AliasChoices("GOOGLE_SERVICE_TIER", "GEMINI_SERVICE_TIER"),
     )
     google_temperature: float = 0.2
     # Side-by-side SVG + prose + tool JSON needs headroom; 2048 truncates show_widget often.
@@ -74,8 +104,8 @@ class Settings(BaseSettings):
     # google-genai / PydanticAI currently support minimal|low|medium|high; keep xhigh
     # as a backwards-compatible env value and normalize it to high at request time.
     google_thinking_level: Literal["minimal", "low", "medium", "high", "xhigh"] = "high"
-    google_retry_attempts: int = 2
-    google_retry_backoff_ms: int = 700
+    google_retry_attempts: int = 4
+    google_retry_backoff_ms: int = 1500
     google_requests_per_minute_limit: int = 15
     google_tokens_per_minute_limit: int = 250_000
     google_requests_per_day_limit: int = 500
@@ -106,12 +136,30 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DATABASE_PATH", "CONVERSATIONS_DB_PATH"),
     )
 
+    agent_config_dir: Path = PROJECT_ROOT / "config"
     agent_config_path: Path = PROJECT_ROOT / "config" / "agent.visual.yaml"
+    default_agent_id: str = "visualizer"
     docs_root: Path = PROJECT_ROOT / "docs"
+    svg_library_root: Path = PROJECT_ROOT / "data" / "SVGs_Organized"
+    svg_preview_renderer_command: str | None = Field(
+        default=None,
+        validation_alias=AliasChoices("SVG_PREVIEW_RENDERER_COMMAND"),
+    )
+    svg_preview_renderer_timeout_ms: int = Field(
+        default=4000,
+        validation_alias=AliasChoices("SVG_PREVIEW_RENDERER_TIMEOUT_MS"),
+    )
 
     @field_validator("database_path", mode="before")
     @classmethod
     def expand_database_path(cls, value: object) -> object:
+        if isinstance(value, str):
+            return Path(value)
+        return value
+
+    @field_validator("svg_library_root", mode="before")
+    @classmethod
+    def expand_svg_library_root(cls, value: object) -> object:
         if isinstance(value, str):
             return Path(value)
         return value
@@ -146,11 +194,18 @@ class Settings(BaseSettings):
         }
 
     def resolve_google_fallback_model_name(self, primary_model: str) -> str | None:
+        configured = self.google_fallback_model_name
+        if configured == "gemini-3.1-flash-lite-preview":
+            configured = "gemini-3-flash-preview"
         if (
-            self.google_fallback_model_name
-            and self.google_fallback_model_name != primary_model
+            configured
+            and configured != primary_model
         ):
-            return self.google_fallback_model_name
+            return configured
+        if primary_model.startswith("gemini-3.1-pro-preview"):
+            return "gemini-2.5-pro"
+        if primary_model.startswith("gemini-3.1-flash"):
+            return "gemini-2.5-flash"
         return None
 
     def resolve_google_allowed_url_domains(self) -> list[str]:
@@ -172,12 +227,22 @@ class Settings(BaseSettings):
         return normalized
 
     def resolve_google_visual_recovery_model_name(self, primary_model: str) -> str | None:
+        configured = self.google_visual_recovery_model_name
+        if configured == "gemini-3.1-flash-lite-preview":
+            configured = "gemini-3-flash-preview"
         if (
-            self.google_visual_recovery_model_name
-            and self.google_visual_recovery_model_name != primary_model
+            configured
+            and configured != primary_model
         ):
-            return self.google_visual_recovery_model_name
+            return configured
+        if primary_model.startswith("gemini-3.1-pro-preview"):
+            return "gemini-2.5-pro"
+        if primary_model.startswith("gemini-3.1-flash"):
+            return "gemini-2.5-flash"
         return None
+
+    def resolve_google_live_model_name(self) -> str:
+        return self.google_live_model_name or "gemini-3.1-flash-live-preview"
 
 
 @lru_cache(maxsize=1)

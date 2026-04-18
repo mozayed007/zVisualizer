@@ -50,7 +50,10 @@ class PromptContractConfig(BaseModel):
 
 
 class AgentDefinition(BaseModel):
+    id: str
     name: str
+    display_name: str | None = None
+    description: str | None = None
     provider: str
     model: str
     subject_area: str
@@ -83,6 +86,26 @@ def resolve_source_documents(
         )
     return resolved
 
-def get_agent_config(settings: Settings | None = None) -> VisualAgentConfig:
+
+def load_agent_configs_from_dir(path: Path) -> dict[str, VisualAgentConfig]:
+    configs: dict[str, VisualAgentConfig] = {}
+    for config_path in sorted(path.glob("agent.*.yaml")):
+        config = load_agent_config_from_path(config_path)
+        configs[config.agent.id] = config
+    return configs
+
+
+def get_agent_config(settings: Settings | None = None, agent_id: str | None = None) -> VisualAgentConfig:
     active_settings = settings or get_settings()
-    return load_agent_config_from_path(active_settings.agent_config_path)
+    configs = load_agent_configs_from_dir(active_settings.agent_config_dir)
+    resolved_agent_id = agent_id or active_settings.default_agent_id
+    if resolved_agent_id in configs:
+        return configs[resolved_agent_id]
+
+    if active_settings.agent_config_path.exists():
+        legacy_config = load_agent_config_from_path(active_settings.agent_config_path)
+        if agent_id is None or legacy_config.agent.id == resolved_agent_id:
+            return legacy_config
+
+    available = ", ".join(sorted(configs)) or "none"
+    raise ValueError(f"Unknown agent_id '{resolved_agent_id}'. Available agents: {available}")

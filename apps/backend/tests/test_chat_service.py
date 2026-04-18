@@ -198,8 +198,10 @@ def test_visual_recovery_falls_back_when_stronger_model_rate_limited(monkeypatch
 
     from app.services.chat_service import AgentDependencies, StreamEventSink
 
+    agent_bundle = service.agent_registry.get()
     recovery_deps = AgentDependencies(
-        config=service.config,
+        agent_id=agent_bundle.config.agent.id,
+        config=agent_bundle.config,
         conversation=conversation,
         event_sink=StreamEventSink(),
         wants_visual=True,

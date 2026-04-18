@@ -26,12 +26,18 @@ from pydantic_ai import (
 )
 from pydantic_ai.builtin_tools import WebFetchTool, WebSearchTool
 from pydantic_ai.exceptions import ModelHTTPError, ModelRetry, UnexpectedModelBehavior
-from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
+from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 
-from app.agent.config import VisualAgentConfig, get_agent_config
-from app.agent.prompt import get_compiled_system_prompt, get_compiled_visual_generation_prompt
-from app.agent.widget_validator import build_widget_payload
+from app.agent.config import VisualAgentConfig
+from app.agent.svg_preview_renderer import ExternalSvgPreviewRenderer
+from app.agent.registry import AgentPromptBundle, AgentRegistry
+from app.agent.svg_library import SvgLibraryService
+from app.agent.svg_vision_repair import SvgVisionRepairService
+from app.agent.widget_validator import (
+    build_template_instance_widget_payload,
+    build_widget_payload,
+)
 from app.core.errors import (
     AppError,
     NotFoundAppError,
@@ -46,6 +52,7 @@ from app.repositories.conversations import (
     SqliteConversationRepository,
 )
 from app.services.model_limits import GeminiRateLimiter, estimate_tokens
+from app.services.priority_google_model import PriorityGoogleModel
 
 WEB_SEARCH_MAX_USES_PER_TURN = 2
 WEB_FETCH_MAX_USES_PER_TURN = 3
@@ -84,6 +91,7 @@ class StreamEventSink:
 
 @dataclass(slots=True)
 class AgentDependencies:
+    agent_id: str
     config: VisualAgentConfig
     conversation: ConversationRecord
     event_sink: StreamEventSink
@@ -117,10 +125,20 @@ class ChatService:
         self.repository = repository or SqliteConversationRepository(self.settings.database_path)
         self._widget_payload_cache: OrderedDict[str, WidgetPayload] = OrderedDict()
         self._widget_payload_cache_max = 100
-        self.config = get_agent_config(self.settings)
-        self._compiled_system_prompt = get_compiled_system_prompt(self.settings)
-        self._compiled_visual_generation_prompt = get_compiled_visual_generation_prompt(
-            self.settings
+        self.agent_registry = AgentRegistry(self.settings)
+        self.svg_library_service = SvgLibraryService(self.settings.svg_library_root)
+        self.svg_vision_repair_service = SvgVisionRepairService(
+            api_key=(
+                self.settings.google_api_key.get_secret_value()
+                if self.settings.google_api_key is not None
+                else None
+            ),
+            model_name=self.settings.google_visual_recovery_model_name,
+            service_tier=self.settings.google_service_tier,
+            preview_renderer=ExternalSvgPreviewRenderer(
+                command_override=self.settings.svg_preview_renderer_command,
+                timeout_ms=self.settings.svg_preview_renderer_timeout_ms,
+            ),
         )
         self.rate_limiter = GeminiRateLimiter(self.settings)
         self._agent_cache: dict[str, Agent[AgentDependencies, str]] = {}
@@ -141,15 +159,21 @@ class ChatService:
                 "temperature": temperature,
                 "max_tokens": self.settings.google_max_output_tokens,
                 "google_thinking_config": self.settings.resolve_google_thinking_config(),
+                "google_service_tier": self.settings.google_service_tier,
             },
         )
 
-    def get_agent(self, model_name: str) -> Agent[AgentDependencies, str]:
-        cached_agent = self._agent_cache.get(model_name)
+    @staticmethod
+    def _cache_key(agent_id: str, model_name: str) -> str:
+        return f"{agent_id}:{model_name}"
+
+    def get_agent(self, agent_bundle: AgentPromptBundle, model_name: str) -> Agent[AgentDependencies, str]:
+        cache_key = self._cache_key(agent_bundle.config.agent.id, model_name)
+        cached_agent = self._agent_cache.get(cache_key)
         if cached_agent is not None:
             return cached_agent
 
-        model = GoogleModel(
+        model = PriorityGoogleModel(
             model_name,
             provider=self.provider,
         )
@@ -157,7 +181,7 @@ class ChatService:
         built_agent = Agent[AgentDependencies, str](
             model,
             deps_type=AgentDependencies,
-            instructions=self._compiled_system_prompt,
+            instructions=agent_bundle.system_prompt,
             model_settings=model_settings,
             retries=2,
             output_retries=2,
@@ -222,12 +246,20 @@ class ChatService:
                         self._widget_payload_cache.move_to_end(cache_key)
                         payload = cached
                 if payload is None:
-                    payload = build_widget_payload(
-                        title=title,
-                        loading_messages=loading_messages,
-                        widget_code=widget_code,
-                        tool_config=ctx.deps.config.agent.tool,
-                    )
+                    if ctx.deps.agent_id == "svg":
+                        payload = build_template_instance_widget_payload(
+                            title=title,
+                            loading_messages=loading_messages,
+                            widget_code=widget_code,
+                            tool_config=ctx.deps.config.agent.tool,
+                        )
+                    else:
+                        payload = build_widget_payload(
+                            title=title,
+                            loading_messages=loading_messages,
+                            widget_code=widget_code,
+                            tool_config=ctx.deps.config.agent.tool,
+                        )
                     if self.settings.enable_widget_cache:
                         self._widget_payload_cache[cache_key] = payload
                         self._widget_payload_cache.move_to_end(cache_key)
@@ -246,13 +278,47 @@ class ChatService:
                         }
                     },
                 )
-                raise ModelRetry(
-                    "show_widget validation failed: "
-                    f"{exc.message} "
-                    "Use snake_case titles, emit a raw SVG/HTML fragment only, and follow "
-                    "the strict visual contracts (viewBox 680, style/content/script order, "
-                    "no document wrappers/comments)."
-                ) from exc
+
+                repaired_payload: WidgetPayload | None = None
+                if (
+                    ctx.deps.agent_id != "svg"
+                    and exc.details.get("kind") == "visualizer_raw_svg"
+                ):
+                    try:
+                        repaired_payload = await asyncio.to_thread(
+                            self.svg_vision_repair_service.repair_raw_visualizer_svg,
+                            error=exc,
+                            tool_config=ctx.deps.config.agent.tool,
+                        )
+                    except Exception as repair_exc:  # pragma: no cover - defensive
+                        logger.warning(
+                            "visualizer-svg-repair-failed",
+                            extra={
+                                "extra_data": {
+                                    "conversation_id": ctx.deps.conversation.id,
+                                    "title": title,
+                                    "detail": str(repair_exc),
+                                }
+                            },
+                        )
+
+                if repaired_payload is not None:
+                    payload = repaired_payload
+                    ctx.deps.last_visual_error = None
+                    if self.settings.enable_widget_cache:
+                        self._widget_payload_cache[cache_key] = payload
+                        self._widget_payload_cache.move_to_end(cache_key)
+                        while len(self._widget_payload_cache) > self._widget_payload_cache_max:
+                            self._widget_payload_cache.popitem(last=False)
+                else:
+                    raise ModelRetry(
+                        "show_widget validation failed: "
+                        f"{exc.message} "
+                        "Use snake_case titles, emit a raw SVG/HTML fragment only, and follow "
+                        "the strict visual contracts (viewBox 680, style/content/script order, "
+                        "no document wrappers/comments, text fits inside its rect, node rects "
+                        "do not overlap)."
+                    ) from exc
 
             ctx.deps.last_visual_error = None
             learner_profile = ctx.deps.conversation.learner_profile
@@ -268,7 +334,7 @@ class ChatService:
             )
             return f"Rendered {payload.title}."
 
-        self._agent_cache[model_name] = built_agent
+        self._agent_cache[cache_key] = built_agent
         return built_agent
 
     def _build_google_builtin_tools(self) -> list[object]:
@@ -348,12 +414,15 @@ class ChatService:
             f"{context_block}"
         )
 
-    def get_context_agent(self, model_name: str) -> Agent[AgentDependencies, str]:
-        cached_agent = self._context_agent_cache.get(model_name)
+    def get_context_agent(
+        self, agent_bundle: AgentPromptBundle, model_name: str
+    ) -> Agent[AgentDependencies, str]:
+        cache_key = self._cache_key(agent_bundle.config.agent.id, model_name)
+        cached_agent = self._context_agent_cache.get(cache_key)
         if cached_agent is not None:
             return cached_agent
 
-        model = GoogleModel(
+        model = PriorityGoogleModel(
             model_name,
             provider=self.provider,
         )
@@ -371,7 +440,7 @@ class ChatService:
             retries=1,
             output_retries=1,
         )
-        self._context_agent_cache[model_name] = built_agent
+        self._context_agent_cache[cache_key] = built_agent
         return built_agent
 
     async def _fetch_external_context(
@@ -385,7 +454,8 @@ class ChatService:
         if not self._should_fetch_external_context(user_message):
             return None
 
-        context_agent = self.get_context_agent(model_name)
+        agent_bundle = self.agent_registry.get(deps.agent_id)
+        context_agent = self.get_context_agent(agent_bundle, model_name)
         prompt = (
             "Gather external context for the learner request. "
             "Return concise bullet points with citations/domains where possible. "
@@ -416,12 +486,15 @@ class ChatService:
             return None
         return context_text[:6000]
 
-    def get_visual_agent(self, model_name: str) -> Agent[AgentDependencies, VisualWidgetDraft]:
-        cached_agent = self._visual_agent_cache.get(model_name)
+    def get_visual_agent(
+        self, agent_bundle: AgentPromptBundle, model_name: str
+    ) -> Agent[AgentDependencies, VisualWidgetDraft]:
+        cache_key = self._cache_key(agent_bundle.config.agent.id, model_name)
+        cached_agent = self._visual_agent_cache.get(cache_key)
         if cached_agent is not None:
             return cached_agent
 
-        model = GoogleModel(
+        model = PriorityGoogleModel(
             model_name,
             provider=self.provider,
         )
@@ -430,7 +503,7 @@ class ChatService:
             model,
             output_type=VisualWidgetDraft,
             deps_type=AgentDependencies,
-            instructions=self._compiled_visual_generation_prompt,
+            instructions=agent_bundle.visual_generation_prompt,
             model_settings=model_settings,
             retries=2,
             output_retries=2,
@@ -458,7 +531,7 @@ class ChatService:
             )
             return "\n".join(lines)
 
-        self._visual_agent_cache[model_name] = built_agent
+        self._visual_agent_cache[cache_key] = built_agent
         return built_agent
 
     async def stream_chat(self, request: ChatRequest, *, client_id: str) -> AsyncIterator[str]:
@@ -480,7 +553,8 @@ class ChatService:
                     raise NotFoundAppError("Conversation", request.conversation_id)
             else:
                 conversation = await self.repository.create_new()
-            self._prepare_conversation(conversation, request)
+            active_agent_bundle = self.agent_registry.get(request.agent_id)
+            self._prepare_conversation(conversation, request, agent_id=active_agent_bundle.config.agent.id)
 
             yield encode_sse(
                 StreamEvent(
@@ -500,9 +574,13 @@ class ChatService:
             history = self._load_history_with_budget(conversation)
             event_sink = StreamEventSink()
             wants_visual = self._request_needs_visual(request.message)
-            active_model_name = self._resolve_primary_model_name(request.model)
+            active_model_name = self._resolve_primary_model_name(
+                request.model,
+                agent_config=active_agent_bundle.config,
+            )
             deps = AgentDependencies(
-                config=self.config,
+                agent_id=active_agent_bundle.config.agent.id,
+                config=active_agent_bundle.config,
                 conversation=conversation,
                 event_sink=event_sink,
                 wants_visual=wants_visual,
@@ -534,7 +612,11 @@ class ChatService:
                         external_context,
                     )
 
-            estimated_input_tokens = self._estimate_request_tokens(prompt_for_model, history)
+            estimated_input_tokens = self._estimate_request_tokens(
+                prompt_for_model,
+                history,
+                agent_bundle=active_agent_bundle,
+            )
             self.rate_limiter.check_and_reserve(estimated_input_tokens, client_id=client_id)
 
             yield encode_sse(
@@ -864,7 +946,10 @@ class ChatService:
                     StreamEvent(
                         type="assistant_done",
                         data={
-                            "followUpChips": self._follow_up_chips(had_widget),
+                            "followUpChips": self._follow_up_chips(
+                                had_widget,
+                                active_agent_bundle.config,
+                            ),
                         },
                     )
                 )
@@ -933,13 +1018,20 @@ class ChatService:
                 )
             )
 
-    def _prepare_conversation(self, conversation: ConversationRecord, request: ChatRequest) -> None:
+    def _prepare_conversation(
+        self,
+        conversation: ConversationRecord,
+        request: ChatRequest,
+        *,
+        agent_id: str,
+    ) -> None:
         if len(request.message) > self.settings.max_message_chars:
             raise ValidationAppError("Message exceeds the allowed size.")
         if conversation.turn_count >= self.settings.max_conversation_turns:
             raise ValidationAppError("Conversation reached the maximum configured number of turns.")
 
         conversation.subject = request.subject or conversation.subject
+        conversation.agent_id = agent_id
         conversation.learner_profile.interaction_count += 1
         if self.settings.enable_learner_profiles and request.learner_profile is not None:
             conversation.learner_profile = request.learner_profile
@@ -951,10 +1043,10 @@ class ChatService:
         ):
             conversation.learner_profile.struggling_with.append(request.message[:80])
 
-    def _follow_up_chips(self, had_widget: bool) -> list[str]:
+    def _follow_up_chips(self, had_widget: bool, agent_config: VisualAgentConfig) -> list[str]:
         if had_widget:
-            return self.config.agent.follow_up_chips.with_widget
-        return self.config.agent.follow_up_chips.without_widget
+            return agent_config.agent.follow_up_chips.with_widget
+        return agent_config.agent.follow_up_chips.without_widget
 
     @staticmethod
     def _log_widget_ready_analytics(data: dict[str, Any]) -> None:
@@ -983,13 +1075,24 @@ class ChatService:
         history_json = ModelMessagesTypeAdapter.dump_json(history).decode("utf-8")
         return estimate_tokens(history_json)
 
-    def _estimate_request_tokens(self, message: str, history: Any) -> int:
+    def _estimate_request_tokens(
+        self,
+        message: str,
+        history: Any,
+        *,
+        agent_bundle: AgentPromptBundle,
+    ) -> int:
         history_tokens = 0 if history is None else self._estimate_history_tokens(history)
-        system_prompt_tokens = estimate_tokens(self._compiled_system_prompt)
+        system_prompt_tokens = estimate_tokens(agent_bundle.system_prompt)
         return history_tokens + system_prompt_tokens + estimate_tokens(message)
 
-    def _resolve_primary_model_name(self, requested_model: str | None = None) -> str:
-        configured_model = requested_model or self.config.agent.model
+    def _resolve_primary_model_name(
+        self,
+        requested_model: str | None = None,
+        *,
+        agent_config: VisualAgentConfig,
+    ) -> str:
+        configured_model = requested_model or agent_config.agent.model
         return self.settings.resolve_google_model_name(configured_model)
 
     def _resolve_recovery_models(self, primary_model_name: str) -> list[str]:
@@ -1046,6 +1149,7 @@ class ChatService:
         estimated_recovery_tokens = self._estimate_request_tokens(
             recovery_prompt,
             message_history,
+            agent_bundle=self.agent_registry.get(deps.agent_id),
         )
         self.rate_limiter.check_and_reserve(estimated_recovery_tokens, client_id=client_id)
 
@@ -1231,8 +1335,9 @@ class ChatService:
         deps: AgentDependencies,
         client_id: str,
     ) -> list[StreamEvent]:
+        agent_bundle = self.agent_registry.get(deps.agent_id)
         estimated_tokens = estimate_tokens(request.message) + estimate_tokens(
-            self._compiled_visual_generation_prompt
+            agent_bundle.visual_generation_prompt
         )
         self.rate_limiter.check_and_reserve(estimated_tokens, client_id=client_id)
 
@@ -1259,7 +1364,78 @@ class ChatService:
         ]
 
         try:
-            agent = self.get_visual_agent(model_name)
+            if deps.agent_id == "svg":
+                try:
+                    library_result = self.svg_library_service.build_widget_for_request(
+                        request_message=request.message,
+                        tool_config=deps.config.agent.tool,
+                    )
+                except ValidationAppError as exc:
+                    repaired_widget = await asyncio.to_thread(
+                        self.svg_vision_repair_service.repair_from_validation_error,
+                        error=exc,
+                        tool_config=deps.config.agent.tool,
+                    )
+                    if repaired_widget is None:
+                        raise
+
+                    learner_profile = deps.conversation.learner_profile
+                    if repaired_widget.title not in learner_profile.concepts_seen:
+                        learner_profile.concepts_seen.append(repaired_widget.title)
+                    events.append(
+                        StreamEvent(
+                            type="status",
+                            data={
+                                "stage": "svg_vision_repair",
+                                "label": "Repairing with Gemini",
+                                "detail": (
+                                    "Static SVG validation was not enough, so a second repair pass used "
+                                    "the current SVG plus violation details."
+                                ),
+                                "state": "completed",
+                            },
+                        )
+                    )
+                    events.append(
+                        StreamEvent(
+                            type="widget_ready",
+                            data={
+                                "widget": repaired_widget.model_dump(),
+                                "followUpChips": deps.config.agent.follow_up_chips.with_widget,
+                            },
+                        )
+                    )
+                    return events
+
+                learner_profile = deps.conversation.learner_profile
+                if library_result.widget.title not in learner_profile.concepts_seen:
+                    learner_profile.concepts_seen.append(library_result.widget.title)
+                events.append(
+                    StreamEvent(
+                        type="status",
+                        data={
+                            "stage": "svg_template_selected",
+                            "label": "Selected SVG template",
+                            "detail": (
+                                f"Using {library_result.template.relative_path} and validating the cloned "
+                                "instance against the source structure."
+                            ),
+                            "state": "completed",
+                        },
+                    )
+                )
+                events.append(
+                    StreamEvent(
+                        type="widget_ready",
+                        data={
+                            "widget": library_result.widget.model_dump(),
+                            "followUpChips": deps.config.agent.follow_up_chips.with_widget,
+                        },
+                    )
+                )
+                return events
+
+            agent = self.get_visual_agent(agent_bundle, model_name)
             result = await agent.run(
                 (
                     "Generate one widget payload for this learner request. "
@@ -1268,12 +1444,39 @@ class ChatService:
                 ),
                 deps=deps,
             )
-            payload = build_widget_payload(
-                title=result.output.title,
-                loading_messages=result.output.loading_messages,
-                widget_code=result.output.widget_code,
-                tool_config=deps.config.agent.tool,
-            )
+            try:
+                payload = build_widget_payload(
+                    title=result.output.title,
+                    loading_messages=result.output.loading_messages,
+                    widget_code=result.output.widget_code,
+                    tool_config=deps.config.agent.tool,
+                )
+            except ValidationAppError as exc:
+                if exc.details.get("kind") != "visualizer_raw_svg":
+                    raise
+                repaired = await asyncio.to_thread(
+                    self.svg_vision_repair_service.repair_raw_visualizer_svg,
+                    error=exc,
+                    tool_config=deps.config.agent.tool,
+                )
+                if repaired is None:
+                    raise
+                payload = repaired
+                events.append(
+                    StreamEvent(
+                        type="status",
+                        data={
+                            "stage": "svg_vision_repair",
+                            "label": "Repairing with Gemini",
+                            "detail": (
+                                "Static geometric validation found text-fit or overlap "
+                                "issues, so a repair pass used the failing SVG plus "
+                                "violation details."
+                            ),
+                            "state": "completed",
+                        },
+                    )
+                )
             learner_profile = deps.conversation.learner_profile
             if payload.title not in learner_profile.concepts_seen:
                 learner_profile.concepts_seen.append(payload.title)
@@ -1357,7 +1560,7 @@ class ChatService:
                             }
                         },
                     )
-                    agent = self.get_agent(candidate_model)
+                    agent = self.get_agent(self.agent_registry.get(deps.agent_id), candidate_model)
                     async for event in agent.run_stream_events(
                         prompt,
                         deps=deps,

@@ -1,5 +1,10 @@
 from app.agent.config import ToolConfig
-from app.agent.widget_validator import SUPPORTED_COLOR_RAMP_CLASSES, build_widget_payload
+from app.agent.widget_validator import (
+    SUPPORTED_COLOR_RAMP_CLASSES,
+    VISUALIZER_RAW_SVG_KIND,
+    build_template_instance_widget_payload,
+    build_widget_payload,
+)
 from app.core.errors import ValidationAppError
 
 
@@ -309,6 +314,71 @@ def test_svg_rejects_non_680_viewbox() -> None:
         )
     except ValidationAppError as exc:
         assert "viewBox='0 0 680 H'" in exc.message
+    else:
+        raise AssertionError("Expected ValidationAppError")
+
+
+def test_template_instance_widget_payload_accepts_client_svg_shape() -> None:
+    payload = build_template_instance_widget_payload(
+        title="client_svg_template",
+        loading_messages=["Selecting template", "Cloning", "Validating"],
+        widget_code=(
+            "<?xml version='1.0' encoding='UTF-8'?>"
+            "<svg viewBox='0 0 1920 1080' xmlns='http://www.w3.org/2000/svg'>"
+            "<defs></defs><g id='slot_1'><text id='text_1'>Hello</text></g></svg>"
+        ),
+        tool_config=build_tool_config(),
+    )
+
+    assert payload.kind == "svg"
+    assert payload.widget_code.startswith("<svg")
+    assert "viewBox='0 0 1920 1080'" in payload.widget_code
+
+
+def test_svg_geometry_violations_reproduce_orange_callout_case() -> None:
+    """Reproduce the visualizer-agent failure where a callout text overflows its
+    rect and the callout rect overlaps a sibling node. Both defects must be
+    surfaced as HIGH violations on the ValidationAppError."""
+
+    widget_code = (
+        "<svg width='100%' viewBox='0 0 680 260'>"
+        "<defs><marker id='arrow' viewBox='0 0 10 10'></marker></defs>"
+        # Self-Attention node.
+        "<g class='node c-purple'>"
+        "<rect x='380' y='120' width='180' height='44'></rect>"
+        "<text class='th' x='470' y='142' text-anchor='middle' dominant-baseline='central'>"
+        "Self-Attention"
+        "</text>"
+        "</g>"
+        # Orange callout sitting on top of the Self-Attention node with a
+        # multi-line body that exits the callout rect on the right.
+        "<g class='node c-coral'>"
+        "<rect x='440' y='110' width='140' height='56'></rect>"
+        "<text class='ts' x='510' y='136' text-anchor='middle' dominant-baseline='central'>"
+        "<tspan x='510' dy='0'>The \"Complex Part\"</tspan>"
+        "<tspan x='510' dy='16'>Learns to route each token to the best expert</tspan>"
+        "</text>"
+        "</g>"
+        "</svg>"
+    )
+
+    try:
+        build_widget_payload(
+            title="dense_vs_moe_architecture",
+            loading_messages=["Building visual"],
+            widget_code=widget_code,
+            tool_config=ToolConfig(),
+        )
+    except ValidationAppError as exc:
+        details = exc.details
+        assert details.get("kind") == VISUALIZER_RAW_SVG_KIND
+        assert details.get("widget_title") == "dense_vs_moe_architecture"
+        assert isinstance(details.get("source_svg"), str)
+        geometry = details.get("geometry_violations")
+        assert isinstance(geometry, list) and geometry
+        codes = {entry["code"] for entry in geometry}
+        assert "V-VIZ-TEXT-OVERFLOW-H" in codes
+        assert "V-VIZ-SIBLING-OVERLAP" in codes
     else:
         raise AssertionError("Expected ValidationAppError")
 

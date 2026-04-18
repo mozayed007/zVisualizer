@@ -32,11 +32,17 @@ def _init_schema_sync(conn: sqlite3.Connection) -> None:
             updated_at TEXT NOT NULL,
             turn_count INTEGER NOT NULL,
             subject TEXT,
+            agent_id TEXT,
             learner_profile_json TEXT NOT NULL,
             message_history_json TEXT
         )
         """
     )
+    columns = {
+        row["name"] for row in conn.execute("PRAGMA table_info(conversations)").fetchall()
+    }
+    if "agent_id" not in columns:
+        conn.execute("ALTER TABLE conversations ADD COLUMN agent_id TEXT")
     conn.commit()
 
 
@@ -55,6 +61,7 @@ def _row_to_record(row: sqlite3.Row) -> ConversationRecord:
         updated_at=_parse_iso(row["updated_at"]),
         turn_count=row["turn_count"],
         subject=row["subject"],
+        agent_id=row["agent_id"],
         learner_profile=learner,
         message_history_json=row["message_history_json"],
     )
@@ -67,6 +74,7 @@ def _record_to_tuple(record: ConversationRecord) -> tuple:
         record.updated_at.isoformat(),
         record.turn_count,
         record.subject,
+        record.agent_id,
         record.learner_profile.model_dump_json(),
         record.message_history_json,
     )
@@ -112,12 +120,13 @@ class SqliteConversationRepository:
                 """
                 INSERT INTO conversations (
                     id, created_at, updated_at, turn_count, subject,
-                    learner_profile_json, message_history_json
-                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    agent_id, learner_profile_json, message_history_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     updated_at = excluded.updated_at,
                     turn_count = excluded.turn_count,
                     subject = excluded.subject,
+                    agent_id = excluded.agent_id,
                     learner_profile_json = excluded.learner_profile_json,
                     message_history_json = excluded.message_history_json
                 """,

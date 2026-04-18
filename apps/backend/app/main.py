@@ -6,10 +6,11 @@ from collections.abc import AsyncIterator, Awaitable, Callable
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
-from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from starlette.websockets import WebSocketState
 from starlette.middleware import Middleware
 
 from app.core.errors import AppError, NotFoundAppError
@@ -17,6 +18,7 @@ from app.core.logging import configure_logging
 from app.core.settings import BACKEND_ENV_PATH, ROOT_ENV_PATH, get_settings
 from app.models.chat import ChatRequest
 from app.services.chat_service import ChatService
+from app.services.live_dialogue_service import LiveDialogueService
 from app.services.model_catalog import ModelCatalogService
 
 settings = get_settings()
@@ -24,6 +26,7 @@ configure_logging()
 logger = logging.getLogger(__name__)
 chat_service = ChatService(settings=settings)
 model_catalog_service = ModelCatalogService(settings=settings)
+live_dialogue_service = LiveDialogueService(settings=settings, chat_service=chat_service)
 
 _SSE_DONE = "data: [DONE]\n\n"
 _bearer = HTTPBearer(auto_error=False)
@@ -58,6 +61,39 @@ def _client_id_from_request(request: Request) -> str:
     return "unknown"
 
 
+def _client_id_from_websocket(websocket: WebSocket) -> str:
+    forwarded = websocket.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip() or "unknown"
+    if websocket.client and websocket.client.host:
+        return websocket.client.host
+    return "unknown"
+
+
+def _extract_bearer_token(raw_header: str | None) -> str:
+    if not raw_header:
+        return ""
+    scheme, _, value = raw_header.partition(" ")
+    if scheme.lower() != "bearer":
+        return ""
+    return value.strip()
+
+
+async def _authorize_live_websocket(websocket: WebSocket) -> bool:
+    expected = settings.chat_api_key
+    if expected is None:
+        return True
+    token = _extract_bearer_token(websocket.headers.get("authorization"))
+    if not token:
+        token = websocket.query_params.get("api_key", "")
+    if token == expected.get_secret_value():
+        return True
+    if websocket.application_state == WebSocketState.CONNECTING:
+        await websocket.accept()
+    await websocket.close(code=4401, reason="Invalid or missing API key")
+    return False
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("app-started", extra={"extra_data": {"environment": settings.environment}})
@@ -73,7 +109,7 @@ app = FastAPI(
             cast(Any, CORSMiddleware),
             allow_origins=[settings.frontend_origin],
             allow_credentials=False,
-            allow_methods=["GET", "POST"],
+            allow_methods=["GET", "POST", "OPTIONS"],
             allow_headers=["*"],
         )
     ],
@@ -138,12 +174,18 @@ async def readiness() -> JSONResponse:
 
 @app.get("/api/runtime")
 async def runtime_status() -> dict[str, object]:
-    primary_model = chat_service._resolve_primary_model_name()
+    default_agent_bundle = chat_service.agent_registry.get()
+    primary_model = chat_service._resolve_primary_model_name(
+        agent_config=default_agent_bundle.config,
+    )
     return {
         "ready": settings.google_api_key is not None,
         "environment": settings.environment,
+        "defaultAgentId": default_agent_bundle.config.agent.id,
+        "defaultAgentName": default_agent_bundle.config.agent.display_name
+        or default_agent_bundle.config.agent.name,
         "model": primary_model,
-        "configuredModel": chat_service.config.agent.model,
+        "configuredModel": default_agent_bundle.config.agent.model,
         "fallbackModel": settings.resolve_google_visual_recovery_model_name(primary_model),
         "limits": {
             "requestsPerMinute": settings.google_requests_per_minute_limit,
@@ -153,6 +195,13 @@ async def runtime_status() -> dict[str, object]:
             "reservedOutputTokens": settings.google_reserved_output_tokens,
             "maxHistoryTokens": settings.google_max_history_tokens,
         },
+        "live": {
+            "ready": settings.google_api_key is not None,
+            "model": settings.resolve_google_live_model_name(),
+            "voice": settings.google_live_voice_name,
+            "inputAudioMimeType": "audio/pcm;rate=16000",
+            "outputAudioMimeType": "audio/pcm;rate=24000",
+        },
         "envSources": [
             str(ROOT_ENV_PATH),
             str(BACKEND_ENV_PATH),
@@ -160,9 +209,20 @@ async def runtime_status() -> dict[str, object]:
     }
 
 
+@app.get("/api/agents")
+async def available_agents() -> dict[str, object]:
+    catalog = chat_service.agent_registry.list_summaries()
+    return {
+        "defaultAgentId": catalog.default_agent_id,
+        "agents": [agent.model_dump(by_alias=False) for agent in catalog.agents],
+    }
+
+
 @app.get("/api/models")
 async def available_models() -> dict[str, object]:
-    default_model = chat_service._resolve_primary_model_name()
+    default_model = chat_service._resolve_primary_model_name(
+        agent_config=chat_service.agent_registry.get().config,
+    )
     catalog = await model_catalog_service.list_models(default_model=default_model)
     return {
         "defaultModel": catalog.default_model,
@@ -190,4 +250,19 @@ async def chat_endpoint(
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
         },
+    )
+
+
+@app.websocket("/api/live")
+async def live_endpoint(websocket: WebSocket) -> None:
+    if not await _authorize_live_websocket(websocket):
+        return
+
+    await live_dialogue_service.handle_websocket(
+        websocket,
+        client_id=_client_id_from_websocket(websocket),
+        conversation_id=websocket.query_params.get("conversation_id"),
+        agent_id=websocket.query_params.get("agent_id"),
+        model=websocket.query_params.get("model"),
+        subject=websocket.query_params.get("subject"),
     )

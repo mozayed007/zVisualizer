@@ -39,7 +39,14 @@ FULL_SKILL_DOCS_HEADING = (
 
 def _is_full_skill_doc(path: str) -> bool:
     normalized = path.replace("\\", "/").lstrip("./")
-    return normalized.startswith("docs/skill/") and normalized.endswith(".md")
+    return (
+        normalized.endswith(".md")
+        and (
+            normalized.startswith("docs/skill/")
+            or normalized.startswith("docs/visualizer_skill/")
+            or normalized.startswith("docs/svg_skill/")
+        )
+    )
 
 
 def _normalize_doc_line(raw_line: str) -> str:
@@ -228,6 +235,23 @@ def build_system_prompt(
         "and keep connector paths fill='none'."
     )
     sections.append(
+        "SVG text-fit contract (hard validated, violations block the render): "
+        "for every <text> inside a <rect>, the estimated text bbox must fit inside the rect with "
+        "~12px inner padding. Use these font metrics: th=14px weight 500 factor 0.58, "
+        "t=14px weight 400 factor 0.52, ts=12px weight 400 factor 0.50. "
+        "rect.width MUST satisfy width >= longest_line_chars * font_size * factor * 1.08 + 24. "
+        "rect.height MUST fit line_count * font_size * 1.35 with 16px vertical padding. "
+        "If copy exceeds capacity, shorten it or wrap with <tspan x='...' dy='...'> — never "
+        "let text extend past its rect edges."
+    )
+    sections.append(
+        "SVG word-count caps per text class: th <= 7 words and <= 40 chars per line, "
+        "t <= 10 words and <= 60 chars per line, ts <= 12 words and <= 80 chars per line "
+        "with at most 3 lines. Callouts and annotations must live in clear space or inside "
+        "their own rect that does not overlap any sibling node by more than 2px. "
+        "Mentally compute every text bbox against its rect before emitting."
+    )
+    sections.append(
         "SVG formatting contract: "
         "standalone SVG widget_code must start directly with <svg>. "
         "Do not wrap a single SVG in a top-level <style> block."
@@ -319,6 +343,12 @@ def build_visual_generation_prompt(
         "- for SVG, use dominant-baseline='central' on text and fill='none' on connector paths",
         "- for standalone SVG, start widget_code directly with <svg>; do not put a top-level <style> block before it",
         "- for SVG text, use the injected classes t, ts, or th",
+        "- every SVG <text> inside a <rect> must FIT the rect with ~12px inner padding; violations are hard-rejected",
+        "- rect.width must satisfy width >= longest_line_chars * font_size * weight_factor * 1.08 + 24 (th=14/0.58, t=14/0.52, ts=12/0.50)",
+        "- rect.height must fit line_count * font_size * 1.35 with 16px vertical padding; wrap long copy with <tspan x='...' dy='...'>",
+        "- word caps: th <= 7 words / 40 chars per line, t <= 10 words / 60 chars, ts <= 12 words / 80 chars / 3 lines max",
+        "- callouts and annotations must sit in clear space or inside a dedicated rect; node rectangles must not overlap each other",
+        "- keep every rect and text bbox inside the 0..680 x 0..H viewBox (no edges past x=640 or below y=H-20)",
         "- for HTML, emit style first, then content, then CDN scripts, then logic",
         "- for HTML, never emit <link> tags, localStorage/sessionStorage/IndexedDB, or position:fixed",
         "- for HTML, keep approved CDN scripts before inline logic and use only cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, or unpkg.com",

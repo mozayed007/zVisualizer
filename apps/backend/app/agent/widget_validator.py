@@ -7,11 +7,21 @@ from typing import Literal
 from pydantic import ValidationError
 
 from app.agent.config import ToolConfig
+from app.agent.svg_geometry_validator import (
+    GeometryViolation,
+    validate_svg_geometry,
+)
 from app.core.errors import ValidationAppError
 from app.models.chat import WidgetPayload
 
+VISUALIZER_RAW_SVG_KIND = "visualizer_raw_svg"
+
 TITLE_PATTERN = re.compile(r"^[a-z0-9]+(?:_[a-z0-9]+)*$")
 SVG_FRAGMENT_PATTERN = re.compile(r"^\s*(<svg[\s\S]*?</svg>)\s*$", re.IGNORECASE)
+SVG_TEMPLATE_FRAGMENT_PATTERN = re.compile(
+    r"^\s*(?:<\?xml[\s\S]*?\?>\s*)?(<svg[\s\S]*?</svg>)\s*$",
+    re.IGNORECASE,
+)
 STANDALONE_SVG_WITH_STYLE_WRAPPER_PATTERN = re.compile(
     r"^\s*(?:<style\b[\s\S]*?</style>\s*)+(<svg[\s\S]*?</svg>)\s*$",
     re.IGNORECASE,
@@ -121,11 +131,27 @@ def build_widget_payload(
     if len(normalized_code) > tool_config.max_widget_code_chars:
         raise ValidationAppError("Widget code exceeds the configured size limit.")
 
-    errors = _collect_widget_code_errors(normalized_code)
+    errors, geometry_violations = _collect_widget_code_errors(normalized_code)
     if errors:
+        details: dict[str, object] = {"violations": errors}
+        lowered_code = normalized_code.lower()
+        if lowered_code.startswith("<svg"):
+            details["source_svg"] = normalized_code
+            details["widget_title"] = normalized_title
+            details["kind"] = VISUALIZER_RAW_SVG_KIND
+            if geometry_violations:
+                details["geometry_violations"] = [
+                    {
+                        "code": violation.code,
+                        "severity": violation.severity,
+                        "message": violation.message,
+                        "element_hint": violation.element_hint,
+                    }
+                    for violation in geometry_violations
+                ]
         raise ValidationAppError(
             "; ".join(errors),
-            details={"violations": errors},
+            details=details,
         )
 
     try:
@@ -144,6 +170,44 @@ def build_widget_payload(
         ) from exc
 
 
+def build_template_instance_widget_payload(
+    *,
+    title: str,
+    loading_messages: list[str],
+    widget_code: str,
+    tool_config: ToolConfig,
+) -> WidgetPayload:
+    normalized_title = title.strip()
+    normalized_code = _normalize_template_svg_code(widget_code)
+    normalized_messages = [message.strip() for message in loading_messages if message.strip()]
+
+    if not TITLE_PATTERN.fullmatch(normalized_title):
+        raise ValidationAppError("Widget title must be snake_case.")
+    if not 1 <= len(normalized_messages) <= tool_config.max_loading_messages:
+        raise ValidationAppError("Widget loading_messages must contain between 1 and 4 items.")
+    if not normalized_code:
+        raise ValidationAppError("Widget code cannot be empty after normalization.")
+    if len(normalized_code) > tool_config.max_widget_code_chars:
+        raise ValidationAppError("Widget code exceeds the configured size limit.")
+
+    lowered_code = normalized_code.lower()
+    if not lowered_code.startswith("<svg"):
+        raise ValidationAppError("Template-instance widget code must normalize to a raw <svg> root.")
+
+    disallowed_patterns = ("<html", "<body", "<head", "<!doctype", "<script")
+    if any(pattern in lowered_code for pattern in disallowed_patterns):
+        raise ValidationAppError(
+            "Template-instance SVG widget code cannot contain document wrappers or scripts."
+        )
+
+    return WidgetPayload(
+        title=normalized_title,
+        loading_messages=normalized_messages,
+        widget_code=normalized_code,
+        kind="svg",
+    )
+
+
 def _normalize_widget_code(widget_code: str) -> str:
     normalized_code = widget_code.strip().replace("\ufeff", "")
 
@@ -154,8 +218,19 @@ def _normalize_widget_code(widget_code: str) -> str:
     return normalized_code
 
 
-def _collect_widget_code_errors(widget_code: str) -> list[str]:
+def _normalize_template_svg_code(widget_code: str) -> str:
+    normalized_code = widget_code.strip().replace("\ufeff", "")
+    svg_match = SVG_TEMPLATE_FRAGMENT_PATTERN.fullmatch(normalized_code)
+    if svg_match is not None:
+        return svg_match.group(1).strip()
+    return normalized_code
+
+
+def _collect_widget_code_errors(
+    widget_code: str,
+) -> tuple[list[str], list[GeometryViolation]]:
     errors: list[str] = []
+    geometry_violations: list[GeometryViolation] = []
     lowered_code = widget_code.lower()
     disallowed_patterns = ("<html", "<body", "<head", "<!doctype")
     if any(pattern in lowered_code for pattern in disallowed_patterns):
@@ -175,8 +250,14 @@ def _collect_widget_code_errors(widget_code: str) -> list[str]:
         errors.extend(_validate_html_widget_code(widget_code))
     else:
         errors.extend(_validate_svg_widget_code(widget_code))
+        geometry_violations = [
+            violation
+            for violation in validate_svg_geometry(widget_code)
+            if violation.severity == "HIGH"
+        ]
+        errors.extend(violation.formatted() for violation in geometry_violations)
 
-    return errors
+    return errors, geometry_violations
 
 
 def _validate_html_widget_code(widget_code: str) -> list[str]:
