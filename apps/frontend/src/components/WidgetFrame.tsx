@@ -1,7 +1,37 @@
+/**
+ * WidgetFrame — iframe host for visualizer-agent generated `widget_code`.
+ *
+ * This file implements a contract with the visualizer agent. Changing any of the
+ * following surfaces without a coordinated update to the agent prompts and the
+ * docs below will silently break generated widgets:
+ *
+ *   Sandbox attrs:   `allow-scripts allow-popups-to-escape-sandbox`
+ *                    (deliberately NO `allow-same-origin` — parent origin stays isolated)
+ *   CSP `csp` attr:  script-src from cdnjs / esm.sh / cdn.jsdelivr.net / unpkg.com,
+ *                    style-src inline + fonts.googleapis.com, font-src fonts.gstatic.com
+ *   Srcdoc order:    design-tokens <style> → bridge <script> → widget_code
+ *   Bridge globals:  window.sendPrompt(text), window.openLink(url)
+ *   Parent messages: { type: 'prompt' | 'iframe_resize' | 'open_link' | 'widget_error',
+ *                      widgetTitle, ... }
+ *   Iframe layout:   width 100%, display block, min-height 80 (flash guard per docs)
+ *
+ * Canonical references:
+ *   - docs/frontend-widget-integration.md  §4 (WidgetFrame / srcdoc assembly)
+ *                                          §5 (injected CSS contract)
+ *   - docs/visualizer_skill/design-system.md
+ *   - docs/backend-widget-endpoint.md      (SSE event + tool schema)
+ *
+ * If you need to change any contract surface, update the agent prompts in
+ * apps/backend/app/agent/prompt.py and the four docs above in the same PR.
+ */
+import { AlertTriangle, Download } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
-import { buildWidgetThemeCss } from '../lib/designTokens'
-import type { WidgetPayload } from '../types'
+import { Button } from '@/components/ui/button'
+import { buildWidgetThemeCss } from '@/lib/designTokens'
+import { cn } from '@/lib/utils'
+import { buildBridgeScript } from '@/lib/widgetBridge'
+import type { WidgetPayload } from '@/types'
 
 interface WidgetFrameProps {
   widget: WidgetPayload
@@ -304,48 +334,6 @@ function formatWidgetTitle(title: string): string {
   return title.replace(/_/g, ' ')
 }
 
-function buildBridgeScript(title: string): string {
-  return `<script>
-  window.sendPrompt = function(text) {
-    parent.postMessage({ type: 'prompt', text: text, widgetTitle: ${JSON.stringify(title)} }, '*');
-  };
-  window.openLink = function(url) {
-    parent.postMessage({ type: 'open_link', url: url, widgetTitle: ${JSON.stringify(title)} }, '*');
-  };
-  let resizeObserver = null;
-  const notifyHeight = function() {
-    var b = document.body ? document.body.scrollHeight : 0;
-    var e = document.documentElement ? document.documentElement.scrollHeight : 0;
-    var h = Math.max(b, e);
-    parent.postMessage({ type: 'iframe_resize', h: h, widgetTitle: ${JSON.stringify(title)} }, '*');
-  };
-  const startResizeObserver = function() {
-    const target = document.body || document.documentElement;
-    if (!target || resizeObserver) {
-      notifyHeight();
-      return;
-    }
-    notifyHeight();
-    if (typeof ResizeObserver !== 'function') {
-      return;
-    }
-    resizeObserver = new ResizeObserver(function() {
-      window.requestAnimationFrame(notifyHeight);
-    });
-    resizeObserver.observe(target);
-  };
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startResizeObserver, { once: true });
-  } else {
-    startResizeObserver();
-  }
-  window.addEventListener('load', startResizeObserver, { once: true });
-  window.addEventListener('error', function(event) {
-    parent.postMessage({ type: 'widget_error', error: String(event.message || event.error || 'Unknown widget error'), widgetTitle: ${JSON.stringify(title)} }, '*');
-  });
-  </scr` + `ipt>`
-}
-
 function syncIframeDesignTokens(iframe: HTMLIFrameElement | null) {
   const doc = iframe?.contentDocument
   if (!doc) {
@@ -493,41 +481,52 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
   }
 
   return (
-    <>
-      {canDownloadSvg ? (
-        <div className="widget-actions">
-          <button
+    <div className={cn('flex flex-col')}>
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 bg-muted/30 px-3 py-2">
+        <div className="min-w-0 truncate text-xs font-medium text-muted-foreground">
+          {displayTitle}
+        </div>
+        {canDownloadSvg ? (
+          <Button
             type="button"
-            className="widget-download-button"
+            variant="ghost"
+            size="sm"
+            className="h-7 gap-1.5 text-xs"
             onClick={handleDownloadSvg}
             disabled={isDownloadingSvg}
             aria-label={`Download ${displayTitle} as SVG`}
           >
-            {isDownloadingSvg ? 'Preparing SVG…' : 'Download SVG'}
-          </button>
-        </div>
-      ) : null}
+            <Download className="size-3.5" />
+            {isDownloadingSvg ? 'Preparing…' : 'Download SVG'}
+          </Button>
+        ) : null}
+      </div>
       {runtimeError ? (
-        <div className="widget-runtime-error" role="status" aria-live="polite">
-          This visual hit a runtime issue: {runtimeError}
+        <div
+          className="flex items-start gap-2 border-b border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0 text-destructive" />
+          <span>This visual hit a runtime issue: {runtimeError}</span>
         </div>
       ) : null}
       <iframe
         ref={iframeRef}
-        className="widget-frame"
+        className="block w-full border-0 bg-transparent min-h-[80px]"
         data-widget={widget.title}
         title={displayTitle}
         aria-label={`Interactive visual: ${displayTitle}`}
         sandbox="allow-scripts allow-popups-to-escape-sandbox"
         srcDoc={srcDoc}
-        style={{ height, transition: 'height 0.15s ease', borderRadius: 10 }}
+        style={{ height, transition: 'height 0.15s ease' }}
         onLoad={() => {
           syncIframeDesignTokens(iframeRef.current)
           setRuntimeError(null)
         }}
         tabIndex={0}
       />
-    </>
+    </div>
   )
 }
 

@@ -42,6 +42,7 @@ export interface ChatRequest {
   conversation_id?: string
   message: string
   subject?: string
+  agent_id?: string
   model?: string
   from_widget?: string
 }
@@ -61,6 +62,8 @@ export interface AgentStatus {
 export interface RuntimeStatus {
   ready: boolean
   environment: string
+  defaultAgentId: string
+  defaultAgentName: string
   model: string
   configuredModel?: string
   fallbackModel?: string | null
@@ -71,6 +74,13 @@ export interface RuntimeStatus {
     maxInputTokens: number
     reservedOutputTokens: number
     maxHistoryTokens: number
+  }
+  live: {
+    ready: boolean
+    model: string
+    voice: string
+    inputAudioMimeType: string
+    outputAudioMimeType: string
   }
   envSources: string[]
 }
@@ -91,4 +101,18 @@ export interface AvailableModel {
 export interface ModelCatalogResponse {
   defaultModel: string
   models: AvailableModel[]
+}
+
+export interface AvailableAgent {
+  id: string
+  name: string
+  display_name: string
+  description?: string | null
+  provider: string
+  default_model: string
+}
+
+export interface AgentCatalogResponse {
+  defaultAgentId: string
+  agents: AvailableAgent[]
 }

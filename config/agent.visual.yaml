@@ -1,5 +1,8 @@
 agent:
+  id: visualizer
   name: visual-learning-companion
+  display_name: Visualizer
+  description: Creates educational SVG and HTML visuals inline in chat using the visualizer skill.
   provider: google-gla
   # Available models (as of April 2026):
   # - gemini-3.1-flash-lite-preview (fast, cost-effective)
@@ -50,6 +53,9 @@ agent:
       - Never hardcode colors for UI semantics; use design tokens, CSS variables, or c-{ramp} classes. Exception — universal conventions (e.g. chemistry atom colors) may use fixed colors that must not invert for pedagogy.
       - Apply c-{ramp} classes to the innermost group that directly wraps colored shapes — nesting breaks direct-child token selectors.
       - For SVG always use width='100%' and viewBox='0 0 680 H', include arrow defs, dominant-baseline='central', and fill='none' on connectors; approximate box widths from label length (roughly max title×8, subtitle×7) + padding.
+      - Text-fit contract is hard-validated — every <text> inside a <rect> must fit the rect with ~12px inner padding. rect.width must satisfy width >= longest_line_chars × font_size × weight_factor × 1.08 + 24 where th=14/0.58, t=14/0.52, ts=12/0.50; rect.height must fit line_count × font_size × 1.35 with 16px vertical padding.
+      - Word caps per text class — th ≤ 7 words / 40 chars per line, t ≤ 10 words / 60 chars, ts ≤ 12 words / 80 chars / 3 lines max. Wrap with <tspan x='…' dy='…'> instead of overflowing the rect.
+      - Callouts and annotations must sit in clear space or inside their own non-overlapping rect; node rectangles must not overlap each other by more than 2px. Every rect and text bbox must stay inside the 0..680 × 0..H viewBox.
       - For HTML widgets always use style, content, CDN scripts, then logic script order; never position:fixed (it breaks iframe intrinsic height).
       - Never emit DOCTYPE, html, head, body, or comments in final widget_code.
       - Never stack two visuals without connecting prose before and after the visual.
@@ -61,17 +67,19 @@ agent:
       - If one encoding fails, switch visual encoding instead of repeating the same representation.
       - Never output raw widget code (SVG or HTML) as normal text or markdown. Always use the show_widget tool to render it.
   source_docs:
-    - path: docs/skill/SKILL.md
+    - path: docs/visualizer_skill/SKILL.md
       label: master_skill
-    - path: docs/skill/design-system.md
+    - path: docs/visualizer_skill/design-system.md
       label: design_system
-    - path: docs/skill/svg-generation.md
+    - path: docs/visualizer_skill/svg-generation.md
       label: svg_generation
-    - path: docs/skill/html-widgets.md
+    - path: docs/visualizer_skill/html-widgets.md
       label: html_widgets
-    - path: docs/skill/visual-routing.md
+    - path: docs/visualizer_skill/visual-routing.md
       label: visual_routing
-    - path: docs/skill/agent-prompts.md
+    - path: docs/visualizer_skill/agent-prompts.md
       label: agent_prompts
+    - path: docs/visualizer_skill/text-fit-and-violations.md
+      label: text_fit_and_violations
     - path: docs/PLATFORM-REQUIREMENTS.md
       label: platform_requirements

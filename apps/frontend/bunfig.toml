@@ -1,0 +1,26 @@
+# Bun configuration for the Visualizer Agent frontend.
+# Docs: https://bun.com/docs/runtime/bunfig
+
+[install]
+# Exact lockfile resolution; fall back to registry for any new deps.
+# `exact = false` lets `bun add` continue to write caret ranges.
+exact = false
+# Use the fast symlink-based hoister by default.
+# Keep peers isolated (Radix UI + React 19 + Vite 8 peer graph is finicky).
+peer = true
+# Save text-based lockfile for reviewable diffs (Bun 1.3+).
+lockfile = true
+
+[install.cache]
+disable = false
+
+[test]
+# Fail tests that hang longer than 20s rather than letting Bun's default kick in.
+timeout = 20000
+# Run the whole repo by default (the src/lib/__tests__ pattern already scopes).
+root = "./src"
+# Render coverage as both text and lcov when --coverage is passed.
+coverageReporter = ["text", "lcov"]
+coverageDir = "coverage"
+# Widen the default pattern so .test.ts and .test.tsx both run.
+# Bun already honors these but pinning avoids surprises on upgrades.
