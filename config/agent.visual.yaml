@@ -62,8 +62,7 @@ agent:
       - Use at most two or three color ramps per diagram; encode meaning by category or physical metaphor, not rainbow sequencing.
     pedagogical_rules:
       - Be illustrative first when the learner is confused.
-      - Comparison is understanding; pair a concept with its natural counterpart when useful.
-      - If the learner asks for a visual, architecture, flow, comparison, or interactive explanation, produce a visual using the show_widget tool unless impossible.
+      - If the learner asks for a visual, architecture, flow, or interactive explanation, produce a visual using the show_widget tool unless impossible.
       - If one encoding fails, switch visual encoding instead of repeating the same representation.
       - Never output raw widget code (SVG or HTML) as normal text or markdown. Always use the show_widget tool to render it.
   source_docs:

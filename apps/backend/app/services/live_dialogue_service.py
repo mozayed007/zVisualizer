@@ -178,7 +178,7 @@ class LiveDialogueService:
                             description=(
                                 "Start a background request in the existing visual chat agent on "
                                 "the user's behalf when they ask for a visual explanation, diagram, "
-                                "comparison, widget, SVG work, or something that should appear "
+                                "widget, SVG work, or something that should appear "
                                 "in the chat canvas. Return immediately so the live conversation "
                                 "can continue while the visual agent works."
                             ),
@@ -227,8 +227,8 @@ class LiveDialogueService:
                 "Keep your replies brief while the user is talking live.",
                 (
                     f"The currently selected backend visual agent is '{agent_name}'. "
-                    "When the user asks to explain something visually, compare ideas with a diagram, "
-                    "render a widget, or edit/generate SVG content, call delegate_to_agent."
+                    "When the user asks to explain something visually, render a widget, "
+                    "or edit/generate SVG content, call delegate_to_agent."
                 ),
                 (
                     "delegate_to_agent starts a background visual job. Do not wait silently for the "
@@ -237,7 +237,7 @@ class LiveDialogueService:
                 ),
                 (
                     "When you call delegate_to_agent, preserve the user's specificity. "
-                    "Keep the requested comparison targets, layout intent, and desired level of "
+                    "Keep the requested layout intent and desired level of "
                     "visual richness instead of collapsing the request into a generic summary."
                 ),
                 (
@@ -271,8 +271,12 @@ class LiveDialogueService:
             message_type = payload.get("type")
 
             if message_type == "session.update":
-                state.selected_agent_id = self._clean_optional_str(payload.get("agentId")) or state.selected_agent_id
-                state.selected_model = self._clean_optional_str(payload.get("model")) or state.selected_model
+                state.selected_agent_id = (
+                    self._clean_optional_str(payload.get("agentId")) or state.selected_agent_id
+                )
+                state.selected_model = (
+                    self._clean_optional_str(payload.get("model")) or state.selected_model
+                )
                 state.conversation_id = self._clean_optional_str(payload.get("conversationId"))
                 state.subject = self._clean_optional_str(payload.get("subject"))
                 await self._send_json(
@@ -778,7 +782,9 @@ class LiveDialogueService:
         excerpt = widget.get("widget_code_excerpt")
         return f"{title}|{kind}|{excerpt}"
 
-    def _build_background_completion_notification(self, result_payload: dict[str, Any]) -> str | None:
+    def _build_background_completion_notification(
+        self, result_payload: dict[str, Any]
+    ) -> str | None:
         if result_payload.get("error"):
             error_text = result_payload.get("error")
             if isinstance(error_text, str) and error_text.strip():
@@ -901,7 +907,9 @@ class LiveDialogueService:
                 await session.send_tool_response(function_responses=function_responses)
             return True
         except ConnectionClosed:
-            logger.warning("live-dialogue-upstream-closed-while-sending-tool-response", exc_info=True)
+            logger.warning(
+                "live-dialogue-upstream-closed-while-sending-tool-response", exc_info=True
+            )
             await self._notify_upstream_closed(websocket)
             return False
 

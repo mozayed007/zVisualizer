@@ -1,12 +1,12 @@
 from pathlib import Path
 
 from app.agent.config import load_agent_config_from_path
-from app.agent.registry import AgentRegistry
 from app.agent.prompt import (
     build_system_prompt,
     build_visual_generation_prompt,
     get_compiled_system_prompt,
 )
+from app.agent.registry import AgentRegistry
 from app.core.settings import Settings
 
 CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "agent.visual.yaml"
@@ -37,7 +37,7 @@ def test_system_prompt_uses_distilled_runtime_rules() -> None:
     assert "Mandatory visual rules:" in prompt
     assert "finish the turn with one brief connecting sentence" in prompt
     assert "configured source docs are runtime context" in prompt
-    assert "Use SVG for reference maps, architecture, containment, comparisons, and mechanism visuals" in prompt
+    assert "Use SVG for reference maps, architecture, containment, and mechanism visuals" in prompt
     assert "Use HTML widgets when the underlying system has a control" in prompt
     assert "claude-visuals-guide-v2.html" in prompt
     assert "Widget output contract:" in prompt
@@ -55,7 +55,6 @@ def test_visual_generation_prompt_contains_distilled_guide_rules() -> None:
     prompt = build_visual_generation_prompt(config)
 
     assert "Return structured widget data only." in prompt
-    assert "for comparisons, place concepts side by side with parallel structure" in prompt
     assert "for SVG, use viewBox='0 0 680 H' and include arrow defs" in prompt
     assert "for HTML, emit style first, then content, then CDN scripts, then logic" in prompt
     assert "Authoritative source-doc contract excerpts" in prompt
@@ -105,7 +104,9 @@ def test_svg_agent_config_loads_source_docs() -> None:
     assert config.agent.id == "svg"
     assert config.agent.display_name == "SVG Agent"
     assert any(doc.path == "docs/svg_skill/SKILL.md" for doc in config.agent.source_docs)
-    assert any(doc.path == "docs/svg_skill/violation-detection.md" for doc in config.agent.source_docs)
+    assert any(
+        doc.path == "docs/svg_skill/violation-detection.md" for doc in config.agent.source_docs
+    )
 
 
 def test_agent_registry_discovers_visualizer_and_svg_agents() -> None:

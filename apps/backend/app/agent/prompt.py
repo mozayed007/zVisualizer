@@ -39,13 +39,10 @@ FULL_SKILL_DOCS_HEADING = (
 
 def _is_full_skill_doc(path: str) -> bool:
     normalized = path.replace("\\", "/").lstrip("./")
-    return (
-        normalized.endswith(".md")
-        and (
-            normalized.startswith("docs/skill/")
-            or normalized.startswith("docs/visualizer_skill/")
-            or normalized.startswith("docs/svg_skill/")
-        )
+    return normalized.endswith(".md") and (
+        normalized.startswith("docs/skill/")
+        or normalized.startswith("docs/visualizer_skill/")
+        or normalized.startswith("docs/svg_skill/")
     )
 
 
@@ -90,9 +87,7 @@ def _extract_doc_lines(content: str, *, max_lines: int) -> list[str]:
         return selected
 
     fallback_lines = [
-        _normalize_doc_line(line)
-        for line in content.splitlines()
-        if _normalize_doc_line(line)
+        _normalize_doc_line(line) for line in content.splitlines() if _normalize_doc_line(line)
     ]
     return fallback_lines[:max_lines]
 
@@ -173,10 +168,9 @@ def build_system_prompt(
         "The configured source docs are runtime context for this turn and are not optional.",
         "Distilled runtime routing rules (align with docs/claude-visuals-guide-v2.html):",
         "- Use plain text when a visual would not materially improve understanding.",
-        "- Use SVG for reference maps, architecture, containment, comparisons, and mechanism visuals when there is no real parameter to vary.",
+        "- Use SVG for reference maps, architecture, containment, and mechanism visuals when there is no real parameter to vary.",
         "- Use HTML widgets when the underlying system has a control the learner should vary (step index, learning rate, frequency, etc.) or when stepping through stages teaches better than one static frame.",
         "- Prefer illustrative diagrams over flowcharts for mechanism explanation; avoid defaulting to box-and-arrow flowcharts for intuition questions.",
-        "- Use a side-by-side comparison layout when the learner asks for differences between two concepts.",
         "- Interactivity is for pedagogy, not decoration — every slider, button, or step must change something that matters to understanding.",
     ]
 
@@ -209,8 +203,7 @@ def build_system_prompt(
         sections.append("Never place two visuals back-to-back without connecting prose.")
 
     sections.append(
-        "When a visual is needed, call the show_widget tool with validated SVG or "
-        "HTML widget code."
+        "When a visual is needed, call the show_widget tool with validated SVG or HTML widget code."
     )
     sections.append(
         "show_widget title contract: the title must be short snake_case only, for example "
@@ -300,7 +293,7 @@ def build_system_prompt(
     if prompt_contract.visual_requests_require_tool_call:
         sections.append(
             "If the learner explicitly asks for a visual, diagram, architecture, flow, "
-            "comparison, or interactive explanation, you must call show_widget unless "
+            "or interactive explanation, you must call show_widget unless "
             "the request is impossible to visualize faithfully."
         )
         sections.append(
@@ -335,10 +328,9 @@ def build_visual_generation_prompt(
         "- never include DOCTYPE, html, head, or body",
         "- never return prose outside widget payload fields",
         "- never emit raw widget code as chat text",
-        "- default to polished SVG for comparisons and architectures; use HTML when a real parameter or step sequence is load-bearing",
+        "- default to polished SVG for architectures; use HTML when a real parameter or step sequence is load-bearing",
         "- prefer an overview visual with 3 to 6 major elements",
         "- make the visual explanatory, not decorative",
-        "- for comparisons, place concepts side by side with parallel structure",
         "- for SVG, use viewBox='0 0 680 H' and include arrow defs",
         "- for SVG, use dominant-baseline='central' on text and fill='none' on connector paths",
         "- for standalone SVG, start widget_code directly with <svg>; do not put a top-level <style> block before it",
@@ -359,7 +351,6 @@ def build_visual_generation_prompt(
         "- use exact ramp classes only: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, c-pink, c-gray, c-red (never c-blue-200)",
         "Distilled Claude-style visual guidance:",
         "- visuals should teach with spatial structure, not repeat the prose",
-        "- comparisons should place both concepts side by side with clear labels",
         "- mechanisms should use illustrative diagrams before generic flowcharts",
         "- every meaningful node should be clickable when practical using sendPrompt(...)",
         "- progressive disclosure beats clutter",
