@@ -55,8 +55,12 @@ class ExternalSvgPreviewRenderer:
         if backend is None:
             return None
 
-        svg_path = Path(tempfile.mkstemp(suffix=".svg")[1])
-        png_path = Path(tempfile.mkstemp(suffix=".png")[1])
+        fd_svg, svg_path_str = tempfile.mkstemp(suffix=".svg")
+        fd_png, png_path_str = tempfile.mkstemp(suffix=".png")
+        os.close(fd_svg)
+        os.close(fd_png)
+        svg_path = Path(svg_path_str)
+        png_path = Path(png_path_str)
         try:
             svg_path.write_text(svg_markup, encoding="utf-8")
             command = self._build_command(backend, svg_path, png_path)

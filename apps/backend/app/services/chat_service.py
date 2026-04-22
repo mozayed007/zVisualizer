@@ -1171,6 +1171,8 @@ class ChatService:
         ]
 
         candidate_models = self._resolve_recovery_models(model_name)
+        if not candidate_models:
+            return VisualRecoveryResult(had_widget=False, history=[], events=events)
         fallback_visual_model = candidate_models[-1]
 
         for candidate_index, candidate_model in enumerate(candidate_models):

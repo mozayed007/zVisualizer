@@ -345,14 +345,15 @@ def _validate_html_widget_code(widget_code: str) -> list[str]:
 
 def _validate_svg_widget_code(widget_code: str) -> list[str]:
     errors: list[str] = []
+    lowered = widget_code.lower()
     if not SVG_WIDTH_PATTERN.search(widget_code):
         errors.append("SVG widget code must include width='100%'.")
-    if not SVG_VIEWBOX_PATTERN.search(widget_code):
+    if not SVG_VIEWBOX_PATTERN.search(lowered):
         errors.append(
             "SVG widget code must use viewBox='0 0 680 H' (with computed H)."
         )
-    if "<defs" not in widget_code.lower() or "id=\"arrow\"" not in widget_code.lower().replace("'", '"'):
-        errors.append("SVG widget code must include <defs> with an arrow marker id='arrow'.")
+    if "<defs" not in lowered or 'id="arrow"' not in lowered.replace("'", '"'):
+        errors.append("Raw SVG widgets must include a defs section with a marker that has id='arrow'.")
 
     text_tags = SVG_TEXT_TAG_PATTERN.findall(widget_code)
     if text_tags:

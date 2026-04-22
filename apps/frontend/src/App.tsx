@@ -135,19 +135,23 @@ export default function App() {
   }, [])
 
   useEffect(() => {
+    let cancelled = false
     void getRuntimeStatus()
       .then((result) => {
+        if (cancelled) return
         setRuntime(result)
         setRuntimeError(null)
         void loadAgentCatalog()
       })
       .catch((runtimeStatusError) => {
+        if (cancelled) return
         setRuntimeError(
           runtimeStatusError instanceof Error
             ? runtimeStatusError.message
             : 'Could not load runtime status.',
         )
       })
+    return () => { cancelled = true }
   }, [loadAgentCatalog])
 
   useEffect(() => {
@@ -377,7 +381,9 @@ export default function App() {
             if (
               message.widgets.some(
                 (widgetState) =>
-                  widgetState.widget && sameWidgetPayload(widgetState.widget, widget),
+                  widgetState.widget &&
+                  !widgetState.errorMessage &&
+                  sameWidgetPayload(widgetState.widget, widget),
               )
             ) {
               return message
