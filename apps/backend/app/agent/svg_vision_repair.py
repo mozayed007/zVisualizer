@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 import re
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 from google import genai
@@ -11,7 +11,6 @@ from app.agent.config import ToolConfig
 from app.agent.svg_preview_renderer import (
     NoopSvgPreviewRenderer,
     SvgPreviewRenderer,
-    SvgRenderedPreview,
 )
 from app.agent.svg_template_validator import validate_svg_template_instance
 from app.agent.widget_validator import (
@@ -334,9 +333,12 @@ class SvgVisionRepairService:
                 *violation_lines,
                 "Requested content lines:",
                 *[f"- {line}" for line in draft.content_lines],
-                "Return only the repaired raw <svg>...</svg> markup with no prose or markdown fences.",
-                "You may adjust editable text content, text lengths, and inline styling, but you must preserve template identity.",
-                "Source SVG follows after this instruction as reference. The current failing clone is attached as SVG bytes.",
+                "Return only the repaired raw <svg>...</svg> markup with no prose or "
+                "markdown fences.",
+                "You may adjust editable text content, text lengths, and inline styling, "
+                "but you must preserve template identity.",
+                "Source SVG follows after this instruction as reference. The current "
+                "failing clone is attached as SVG bytes.",
                 draft.source_svg,
             ]
         )

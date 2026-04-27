@@ -10,8 +10,8 @@ from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from starlette.websockets import WebSocketState
 from starlette.middleware import Middleware
+from starlette.websockets import WebSocketState
 
 from app.core.errors import AppError, NotFoundAppError
 from app.core.logging import configure_logging
@@ -42,7 +42,7 @@ def _sse_with_done(body: AsyncIterator[str]) -> AsyncIterator[str]:
 
 
 async def _verify_chat_api_key(
-    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),
+    credentials: HTTPAuthorizationCredentials | None = Depends(_bearer),  # noqa: B008
 ) -> None:
     expected = settings.chat_api_key
     if expected is None:

@@ -61,8 +61,31 @@ class AgentRegistry:
                 f"Default agent '{self.settings.default_agent_id}' is not configured."
             )
 
+    def _resolve_agent_id(self, agent_id: str | None) -> str:
+        if agent_id is None:
+            return self.settings.default_agent_id
+
+        normalized = agent_id.strip()
+        if not normalized:
+            return self.settings.default_agent_id
+
+        if normalized in self._bundles:
+            return normalized
+
+        normalized_folded = normalized.casefold()
+        for bundle_id, bundle in self._bundles.items():
+            aliases = (
+                bundle_id,
+                bundle.config.agent.name,
+                bundle.config.agent.display_name or "",
+            )
+            if any(alias and alias.casefold() == normalized_folded for alias in aliases):
+                return bundle_id
+
+        return normalized
+
     def get(self, agent_id: str | None = None) -> AgentPromptBundle:
-        resolved_agent_id = agent_id or self.settings.default_agent_id
+        resolved_agent_id = self._resolve_agent_id(agent_id)
         bundle = self._bundles.get(resolved_agent_id)
         if bundle is None:
             available = ", ".join(sorted(self._bundles)) or "none"

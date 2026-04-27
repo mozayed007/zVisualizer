@@ -1,8 +1,9 @@
 import asyncio
+import inspect
 
 import orjson
-from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 from pydantic import SecretStr
+from pydantic_ai.messages import PartDeltaEvent, PartStartEvent, TextPart, TextPartDelta
 
 from app.core.errors import RateLimitAppError
 from app.core.settings import Settings
@@ -118,6 +119,13 @@ def test_request_needs_visual_detects_interactive_follow_ups() -> None:
 
     assert service._request_needs_visual('Make it interactive') is True
     assert service._request_needs_visual('Turn this into a simulation') is True
+
+
+def test_visual_fallback_context_removes_dense_vs_moe_svg_bias() -> None:
+    source = inspect.getsource(ChatService.get_visual_agent)
+
+    assert "Dense vs MoE style comparison prompts" not in source
+    assert "interactive controls, not static SVG side-by-sides" in source
 
 
 def test_recovery_prefers_stronger_fallback_model(monkeypatch) -> None:

@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import re
-from urllib.parse import urlparse
 from typing import Literal
+from urllib.parse import urlparse
 
 from pydantic import ValidationError
 

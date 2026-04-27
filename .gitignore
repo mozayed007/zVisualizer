@@ -90,7 +90,7 @@ Thumbs.db
 # Testing
 coverage/
 .nyc_output/
-
+.kilo/
 # Archives
 *.tgz
 *.tar.gz

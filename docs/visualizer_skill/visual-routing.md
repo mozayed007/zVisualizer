@@ -270,6 +270,34 @@ If a `<path>` needs more than ~6 segments, simplify it. Recognizable silhouette 
 
 ---
 
+## Parameterized Comparisons
+
+When the learner asks to compare two concepts, the choice between HTML and SVG depends on one question: *Would exploration through parameter variation deepen understanding?*
+
+If both concepts being compared have real parameters the learner could adjust (learning rates, thresholds, step counts, temperatures, input values), an HTML widget with controls teaches more than a static side-by-side SVG.
+
+### Decision Rule
+
+| Has tunable parameters? | Comparison type | Visual Type |
+|-------------------------|-----------------|-------------|
+| **Yes, parameters affect behavior** | Optimizers, activation functions, schedulers, temperature-based systems, iterative algorithms | **HTML widget** — controls let the learner see how each responds to the same parameter change |
+| **No, behavior is fixed** | Data structures, architectural patterns, static taxonomies, procedural sequences | **SVG** — show structural or behavioral differences directly |
+| **Step-through teaches better** | Algorithms where sequence matters more than static structure | **HTML stepper** — let the learner step through both side-by-side |
+
+### Anti-pattern: Static comparison when variation would teach
+
+```
+BAD:  "Compare X and Y" (both have tunable parameters) → static side-by-side SVG with fixed values
+GOOD: "Compare X and Y" (both have tunable parameters) → HTML widget with parameter slider, showing both responding live
+
+BAD:  "Compare Stack and Queue" → HTML widget trying to vary a "push speed" parameter (meaningless)
+GOOD: "Compare Stack and Queue" → SVG showing LIFO vs FIFO behavior directly
+```
+
+When comparing any two concepts, ask: *Would letting the learner adjust a meaningful parameter teach more than showing fixed values?* If yes → HTML widget. If no → SVG.
+
+---
+
 ## Anti-patterns to avoid
 
 ### 1. Forcing a flowchart when illustrative is needed

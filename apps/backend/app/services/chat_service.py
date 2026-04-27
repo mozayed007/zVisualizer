@@ -30,9 +30,9 @@ from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 
 from app.agent.config import VisualAgentConfig
-from app.agent.svg_preview_renderer import ExternalSvgPreviewRenderer
 from app.agent.registry import AgentPromptBundle, AgentRegistry
 from app.agent.svg_library import SvgLibraryService
+from app.agent.svg_preview_renderer import ExternalSvgPreviewRenderer
 from app.agent.svg_vision_repair import SvgVisionRepairService
 from app.agent.widget_validator import (
     build_template_instance_widget_payload,
@@ -525,8 +525,11 @@ class ChatService:
             lines.extend(
                 [
                     "Produce exactly one high-quality visual payload.",
-                    "Prefer SVG unless interactivity materially improves understanding.",
-                    "For Dense vs MoE style comparison prompts, use a side-by-side comparison SVG.",
+                    "Prefer SVG for static architecture/containment diagrams; prefer HTML when "
+                    "the concept has real parameters the learner should explore.",
+                    "For comparisons: use HTML widgets when both concepts have tunable parameters "
+                    "(sliders would teach); use SVG when comparing fixed structures without "
+                    "meaningful parameters to vary.",
                 ]
             )
             return "\n".join(lines)

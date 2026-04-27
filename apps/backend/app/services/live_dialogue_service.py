@@ -177,8 +177,8 @@ class LiveDialogueService:
                             name="delegate_to_agent",
                             description=(
                                 "Start a background request in the existing visual chat agent on "
-                                "the user's behalf when they ask for a visual explanation, diagram, "
-                                "widget, SVG work, or something that should appear "
+                                "the user's behalf when they ask for a visual explanation, interactive "
+                                "visualization, animated graphic, or suitable visual content that should appear "
                                 "in the chat canvas. Return immediately so the live conversation "
                                 "can continue while the visual agent works."
                             ),
@@ -227,8 +227,8 @@ class LiveDialogueService:
                 "Keep your replies brief while the user is talking live.",
                 (
                     f"The currently selected backend visual agent is '{agent_name}'. "
-                    "When the user asks to explain something visually, render a widget, "
-                    "or edit/generate SVG content, call delegate_to_agent."
+                    "When the user asks to explain something visually, create an interactive "
+                    "or static visualization, or generate suitable visual content, call delegate_to_agent."
                 ),
                 (
                     "delegate_to_agent starts a background visual job. Do not wait silently for the "

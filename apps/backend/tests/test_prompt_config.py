@@ -39,9 +39,12 @@ def test_system_prompt_uses_distilled_runtime_rules() -> None:
     assert "configured source docs are runtime context" in prompt
     assert "Use SVG for reference maps, architecture, containment, and mechanism visuals" in prompt
     assert "Use HTML widgets when the underlying system has a control" in prompt
+    assert "Use HTML widgets for comparisons of parameterized systems" in prompt
     assert "claude-visuals-guide-v2.html" in prompt
     assert "Widget output contract:" in prompt
     assert "HTML widget contract:" in prompt
+    assert "Color variety contract:" in prompt
+    assert "Avoid defaulting to the same purple-teal-amber sequence repeatedly" in prompt
     assert "title must be short snake_case" in prompt
     assert "dense_vs_moe_architecture" in prompt
     assert "Authoritative source-doc contract excerpts" in prompt
@@ -57,6 +60,8 @@ def test_visual_generation_prompt_contains_distilled_guide_rules() -> None:
     assert "Return structured widget data only." in prompt
     assert "for SVG, use viewBox='0 0 680 H' and include arrow defs" in prompt
     assert "for HTML, emit style first, then content, then CDN scripts, then logic" in prompt
+    assert "for comparisons of parameterized systems" in prompt
+    assert "avoid repeating the same purple-teal-amber trio" in prompt
     assert "Authoritative source-doc contract excerpts" in prompt
     assert "docs/visualizer_skill/svg-generation.md" in prompt
 
@@ -122,3 +127,16 @@ def test_agent_registry_discovers_visualizer_and_svg_agents() -> None:
 
     assert catalog.default_agent_id == "visualizer"
     assert {"visualizer", "svg"}.issubset(ids)
+
+
+def test_agent_registry_accepts_display_name_alias_case_insensitively() -> None:
+    registry = AgentRegistry(
+        Settings(
+            agent_config_dir=CONFIG_PATH.parent,
+            default_agent_id="visualizer",
+        )
+    )
+
+    bundle = registry.get("Visualizer")
+
+    assert bundle.config.agent.id == "visualizer"

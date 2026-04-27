@@ -168,10 +168,18 @@ def build_system_prompt(
         "The configured source docs are runtime context for this turn and are not optional.",
         "Distilled runtime routing rules (align with docs/claude-visuals-guide-v2.html):",
         "- Use plain text when a visual would not materially improve understanding.",
-        "- Use SVG for reference maps, architecture, containment, and mechanism visuals when there is no real parameter to vary.",
-        "- Use HTML widgets when the underlying system has a control the learner should vary (step index, learning rate, frequency, etc.) or when stepping through stages teaches better than one static frame.",
-        "- Prefer illustrative diagrams over flowcharts for mechanism explanation; avoid defaulting to box-and-arrow flowcharts for intuition questions.",
-        "- Interactivity is for pedagogy, not decoration — every slider, button, or step must change something that matters to understanding.",
+        "- Use SVG for reference maps, architecture, containment, and mechanism visuals "
+        "when there is no real parameter to vary.",
+        "- Use HTML widgets when the underlying system has a control the learner should vary "
+        "(step index, learning rate, frequency, etc.) or when stepping through stages "
+        "teaches better than one static frame.",
+        "- Use HTML widgets for comparisons where both concepts have tunable parameters "
+        "the learner should explore (learning rate, temperature, thresholds) — let the "
+        "learner vary and see both respond.",
+        "- Prefer illustrative diagrams over flowcharts for mechanism explanation; "
+        "avoid defaulting to box-and-arrow flowcharts for intuition questions.",
+        "- Interactivity is for pedagogy, not decoration — every slider, button, or step "
+        "must change something that matters to understanding.",
     ]
 
     if prompt_contract.enforce_platform_requirements:
@@ -290,6 +298,11 @@ def build_system_prompt(
         "Keep the first visual focused and uncluttered, usually 3 to 6 major elements. "
         "Use progressive disclosure and meaningful sendPrompt follow-ups where useful."
     )
+    sections.append(
+        "Color variety contract: Vary color ramps across different visuals in the same conversation. "
+        "Available ramps: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, c-pink, c-gray, c-red. "
+        "Avoid defaulting to the same purple-teal-amber sequence repeatedly — rotate ramps to keep visuals distinct."
+    )
     if prompt_contract.visual_requests_require_tool_call:
         sections.append(
             "If the learner explicitly asks for a visual, diagram, architecture, flow, "
@@ -328,27 +341,40 @@ def build_visual_generation_prompt(
         "- never include DOCTYPE, html, head, or body",
         "- never return prose outside widget payload fields",
         "- never emit raw widget code as chat text",
-        "- default to polished SVG for architectures; use HTML when a real parameter or step sequence is load-bearing",
+        "- default to polished SVG for architectures; use HTML when a real parameter or "
+        "step sequence is load-bearing",
+        "- for comparisons of parameterized systems (optimizers, hyperparameter-sensitive "
+        "algorithms), prefer HTML widgets with shared controls so learners can explore both side-by-side",
         "- prefer an overview visual with 3 to 6 major elements",
         "- make the visual explanatory, not decorative",
         "- for SVG, use viewBox='0 0 680 H' and include arrow defs",
         "- for SVG, use dominant-baseline='central' on text and fill='none' on connector paths",
         "- for standalone SVG, start widget_code directly with <svg>; do not put a top-level <style> block before it",
         "- for SVG text, use the injected classes t, ts, or th",
-        "- every SVG <text> inside a <rect> must FIT the rect with ~12px inner padding; violations are hard-rejected",
-        "- rect.width must satisfy width >= longest_line_chars * font_size * weight_factor * 1.08 + 24 (th=14/0.58, t=14/0.52, ts=12/0.50)",
-        "- rect.height must fit line_count * font_size * 1.35 with 16px vertical padding; wrap long copy with <tspan x='...' dy='...'>",
-        "- word caps: th <= 7 words / 40 chars per line, t <= 10 words / 60 chars, ts <= 12 words / 80 chars / 3 lines max",
-        "- callouts and annotations must sit in clear space or inside a dedicated rect; node rectangles must not overlap each other",
+        "- every SVG <text> inside a <rect> must FIT the rect with ~12px inner padding; "
+        "violations are hard-rejected",
+        "- rect.width must satisfy width >= longest_line_chars * font_size * weight_factor * 1.08 + 24 "
+        "(th=14/0.58, t=14/0.52, ts=12/0.50)",
+        "- rect.height must fit line_count * font_size * 1.35 with 16px vertical padding; "
+        "wrap long copy with <tspan x='...' dy='...'>",
+        "- word caps: th <= 7 words / 40 chars per line, t <= 10 words / 60 chars, "
+        "ts <= 12 words / 80 chars / 3 lines max",
+        "- callouts and annotations must sit in clear space or inside a dedicated rect; "
+        "node rectangles must not overlap each other",
         "- keep every rect and text bbox inside the 0..680 x 0..H viewBox (no edges past x=640 or below y=H-20)",
         "- for HTML, emit style first, then content, then CDN scripts, then logic",
-        "- for HTML, never emit <link> tags, localStorage/sessionStorage/IndexedDB, or position:fixed",
-        "- for HTML, keep approved CDN scripts before inline logic and use only cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, or unpkg.com",
+        "- for HTML, never emit <link> tags, localStorage/sessionStorage/IndexedDB, "
+        "or position:fixed",
+        "- for HTML, keep approved CDN scripts before inline logic and use only "
+        "cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, or unpkg.com",
         "- for HTML, keep learner-visible computed numbers rounded and give canvas/chart containers explicit height",
         "- use only host-supported tokens: c-{ramp}, --color-*, --font-*, --border-radius-*, and --p/--s/--t/--bg2/--b",
         "- never invent color variables like --c-purple-500",
         "- use exact token names like --color-text-info, not palette-stop tokens like --color-blue-200",
-        "- use exact ramp classes only: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, c-pink, c-gray, c-red (never c-blue-200)",
+        "- use exact ramp classes only: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, "
+        "c-pink, c-gray, c-red (never c-blue-200)",
+        "- vary ramp selection across conversation visuals; avoid repeating the same "
+        "purple-teal-amber trio unless continuity is intentionally being preserved",
         "Distilled Claude-style visual guidance:",
         "- visuals should teach with spatial structure, not repeat the prose",
         "- mechanisms should use illustrative diagrams before generic flowcharts",

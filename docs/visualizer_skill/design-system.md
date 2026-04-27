@@ -308,6 +308,50 @@ Assign color to a node:
 
 ---
 
+## Color Variety Guidance
+
+The visual learning companion has 9 distinct color ramps available. Using the same ramps repeatedly creates visual fatigue and reduces distinctiveness between concepts.
+
+### Variety Rules
+
+1. **Rotate ramps across consecutive visuals**: If the previous visual used c-purple and c-teal, the next unrelated visual should use different ramps (e.g., c-coral, c-blue, c-green).
+
+2. **Avoid the default triangle**: Resist the urge to always start with purple-teal-amber. This is the most common "safe" choice but creates monotony.
+
+3. **Use color to encode session progression**: 
+   - Early concepts: c-purple, c-teal (familiar, calm)
+   - Mid-session concepts: c-coral, c-blue, c-green (energy, variety)
+   - Important distinctions: c-amber, c-red (attention-grabbing)
+   - Neutral/structural: c-gray, c-pink
+
+4. **Related concepts get related colors**: If visualizing attention mechanisms and then transformer architecture, keeping the same color family (purples/blues) helps connect the concepts. Unrelated concepts (attention mechanisms → sorting algorithms) should switch ramps entirely.
+
+### Example Session Progression
+
+```
+Turn 1: "Explain attention" → c-purple, c-teal (familiar base)
+Turn 2: "Show transformer architecture" → c-purple, c-blue, c-teal (building on attention)
+Turn 3: "Compare sorting algorithms" → c-coral, c-green, c-amber (fresh distinction)
+Turn 4: "How does backprop work?" → c-blue, c-pink (new concept, new colors)
+Turn 5: "Compare optimizers" → c-amber, c-red, c-gray (attention-grabbing comparison)
+```
+
+### Color Ramp Quick Reference
+
+| Ramp | Character | Best Used For |
+|------|-------------|---------------|
+| c-purple | Calm, familiar, default | General starting point |
+| c-teal | Technical, cool, precise | Algorithms, processes |
+| c-amber | Warm, active, caution | Energy, warnings, activity |
+| c-coral | Vibrant, urgent | Attention mechanisms, important distinctions |
+| c-blue | Trustworthy, informational | Data flow, information processing |
+| c-green | Positive, growth | Success states, convergence, growth |
+| c-pink | Distinctive, alternate | Secondary categories, alternatives |
+| c-gray | Neutral, structural | Infrastructure, containers, defaults |
+| c-red | Critical, danger | Errors, breaking conditions, critical paths |
+
+---
+
 ## The injected stylesheet — full implementation
 
 This is what the host must inject into every iframe as a `<style>` block prepended to the srcdoc. Agents building the host application must implement this exactly.

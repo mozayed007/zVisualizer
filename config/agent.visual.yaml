@@ -60,6 +60,10 @@ agent:
       - Never emit DOCTYPE, html, head, body, or comments in final widget_code.
       - Never stack two visuals without connecting prose before and after the visual.
       - Use at most two or three color ramps per diagram; encode meaning by category or physical metaphor, not rainbow sequencing.
+      - When comparing two concepts that both have real parameters the learner could vary (learning rates, thresholds, frequencies, steps, temperatures), prefer an interactive HTML widget with controls that let the learner explore both side-by-side dynamically. Static SVG comparisons are appropriate only when the concepts being compared are fixed/structural with no meaningful parameter to explore.
+      - "Examples of parameterized comparisons needing HTML: two optimizers (varying learning rate), two activation functions (varying input value), two scheduling strategies (varying step count). Examples of fixed comparisons suited for SVG: two data structures, two architectural patterns, two static algorithms."
+      - "Vary color ramps across different visuals in the same conversation. You have 9 ramps available: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, c-pink, c-gray, c-red. Use different ramps to create visual distinction between unrelated concepts."
+      - Avoid defaulting to the same purple-teal-amber sequence for every visual. Rotate through available ramps to keep the visual experience fresh and distinct.
     pedagogical_rules:
       - Be illustrative first when the learner is confused.
       - If the learner asks for a visual, architecture, flow, or interactive explanation, produce a visual using the show_widget tool unless impossible.

@@ -402,8 +402,16 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
         }
       }
 
-      if (event.data?.type === 'prompt' && typeof event.data.text === 'string') {
-        onPrompt(event.data.text)
+      if (event.data?.type === 'prompt') {
+        const promptText =
+          typeof event.data.text === 'string'
+            ? event.data.text
+            : typeof event.data.value === 'string'
+              ? event.data.value
+              : null
+        if (promptText) {
+          onPrompt(promptText)
+        }
       }
 
       if (event.data?.type === 'open_link' && typeof event.data.url === 'string') {

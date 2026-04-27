@@ -20,12 +20,11 @@ final rendered output.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 import math
 import re
+from dataclasses import dataclass, field
 from typing import Literal
 from xml.etree import ElementTree
-
 
 Severity = Literal["HIGH", "MEDIUM"]
 
@@ -120,7 +119,7 @@ class _Bbox:
     def contains_point(self, px: float, py: float) -> bool:
         return self.x <= px <= self.right and self.y <= py <= self.bottom
 
-    def intersects(self, other: "_Bbox", tolerance: float) -> bool:
+    def intersects(self, other: _Bbox, tolerance: float) -> bool:
         return not (
             self.right - tolerance <= other.x
             or other.right - tolerance <= self.x

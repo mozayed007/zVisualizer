@@ -3,9 +3,8 @@ from __future__ import annotations
 from typing import Any, cast
 
 from pydantic_ai.messages import ModelMessage
-from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 from pydantic_ai.models import ModelRequestParameters
-
+from pydantic_ai.models.google import GoogleModel, GoogleModelSettings
 
 # ServiceTier mapping for google-genai >=1.75.
 # The SDK's GenerateContentConfig.service_tier now accepts lowercase string
@@ -27,12 +26,18 @@ class PriorityGoogleModel(GoogleModel):
         model_settings: GoogleModelSettings,
         model_request_parameters: ModelRequestParameters,
     ) -> tuple[list[Any], dict[str, Any]]:
+        # pydantic-ai's `google_service_tier` expects Vertex-specific values
+        # (e.g. pt_then_on_demand) and can assert on legacy SDK enum names.
+        # We use the SDK-level `service_tier` instead, so remove the pydantic-ai
+        # key before calling `super()` and inject the mapped SDK value after.
+        settings_dict = cast(dict[str, Any], model_settings).copy()
+        service_tier = settings_dict.pop("google_service_tier", None)
+
         contents, config = await super()._build_content_and_config(
             messages,
-            model_settings,
+            cast(GoogleModelSettings, settings_dict),
             model_request_parameters,
         )
-        service_tier = cast(dict[str, Any], model_settings).get("google_service_tier")
         if service_tier:
             # Map the historical SERVICE_TIER_* settings value to the lowercase
             # string literal required by google-genai >=1.75.

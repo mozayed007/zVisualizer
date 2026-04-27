@@ -1,12 +1,13 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from pathlib import Path
 import os
 import shutil
 import subprocess
 import tempfile
-from typing import Callable, Protocol
+from collections.abc import Callable
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Protocol
 
 
 @dataclass(frozen=True, slots=True)
@@ -127,7 +128,6 @@ class ExternalSvgPreviewRenderer:
             command,
             check=True,
             timeout=max(1, timeout_ms) / 1000,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             env={**os.environ, "PAGER": "cat"},
         )
