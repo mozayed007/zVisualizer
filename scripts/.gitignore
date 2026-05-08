@@ -1,0 +1,20 @@
+# Logs
+*.log
+logs/
+
+# PID files
+*.pid
+
+# Temporary files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Runtime data
+*.cache
+*.state
+
+# Output files
+output/
+results/

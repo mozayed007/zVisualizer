@@ -10,7 +10,7 @@ import {
   Send,
   Volume2,
 } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useMemo, useRef, useState, useImperativeHandle } from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -43,6 +43,7 @@ interface VoiceConsoleProps {
   conversationId?: string
   onDelegatedTurnStart: (userMessage: string) => void
   onDelegatedServerEvent: (event: ServerEvent) => void
+  onTranscriptTurnComplete?: (userText: string, assistantText: string) => void
 }
 
 type ConnectionState = 'disconnected' | 'connecting' | 'connected'
@@ -58,7 +59,14 @@ const SPEECH_START_LEVEL = 0.02
 const SPEECH_END_LEVEL = 0.012
 const AUDIO_SILENCE_FLUSH_MS = 2000
 
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
+function resolveApiBaseUrl(): string {
+  const configured = import.meta.env.VITE_API_BASE_URL
+  if (configured) return configured
+  if (typeof window !== 'undefined') return window.location.origin
+  return 'http://localhost:8000'
+}
+
+const apiBaseUrl = resolveApiBaseUrl()
 const chatApiKey = import.meta.env.VITE_CHAT_API_KEY as string | undefined
 
 function deriveWebSocketUrl(baseUrl: string): string {
@@ -166,6 +174,9 @@ function getMediaErrorMessage(error: unknown): string {
   }
   const name = error.name.toLowerCase()
   const message = error.message.trim()
+  if (message.includes('getUserMedia is not a function') || name.includes('security') || /secure context/i.test(message)) {
+    return 'Microphone access requires a secure context (HTTPS or localhost).'
+  }
   if (
     name.includes('notallowed') ||
     name.includes('permission') ||
@@ -178,9 +189,6 @@ function getMediaErrorMessage(error: unknown): string {
   }
   if (name.includes('notreadable') || /device in use|could not start audio source/i.test(message)) {
     return 'The microphone is busy in another app. Close the other app or choose a different mic, then retry.'
-  }
-  if (name.includes('security') || /secure context/i.test(message)) {
-    return 'Microphone access requires a secure context. Use the local preview URL directly and try again.'
   }
   return message || 'Microphone access failed. Allow mic permission in the browser, then try again.'
 }
@@ -283,14 +291,23 @@ function VoiceWaveCard({
   )
 }
 
-export function VoiceConsole({
-  runtime,
-  selectedAgent,
-  selectedModel,
-  conversationId,
-  onDelegatedTurnStart,
-  onDelegatedServerEvent,
-}: VoiceConsoleProps) {
+export interface VoiceConsoleRef {
+  sendText: (text: string) => boolean
+  isConnected: boolean
+}
+
+export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(function VoiceConsole(
+  {
+    runtime,
+    selectedAgent,
+    selectedModel,
+    conversationId,
+    onDelegatedTurnStart,
+    onDelegatedServerEvent,
+    onTranscriptTurnComplete,
+  },
+  ref,
+) {
   const [connectionState, setConnectionState] = useState<ConnectionState>('disconnected')
   const [statusDetail, setStatusDetail] = useState('Start a voice session to talk with Gemini Live.')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -309,6 +326,8 @@ export function VoiceConsole({
   const [speakerSelectionSupported, setSpeakerSelectionSupported] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const [hasManuallyMuted, setHasManuallyMuted] = useState(false)
+  const [localMicMonitoring, setLocalMicMonitoring] = useState(false)
+  const [monitoringGain, setMonitoringGain] = useState(0.3)
 
   const websocketRef = useRef<WebSocket | null>(null)
   const captureContextRef = useRef<AudioContext | null>(null)
@@ -321,6 +340,7 @@ export function VoiceConsole({
   const captureSourceRef = useRef<MediaStreamAudioSourceNode | null>(null)
   const analyserRef = useRef<AnalyserNode | null>(null)
   const silentGainRef = useRef<GainNode | null>(null)
+  const monitoringGainRef = useRef<GainNode | null>(null)
   const playbackCursorRef = useRef(0)
   const activePlaybackSourcesRef = useRef<AudioBufferSourceNode[]>([])
   const micEnabledRef = useRef(false)
@@ -601,10 +621,12 @@ export function VoiceConsole({
     captureSourceRef.current?.disconnect()
     analyserRef.current?.disconnect()
     silentGainRef.current?.disconnect()
+    monitoringGainRef.current?.disconnect()
     captureProcessorRef.current = null
     captureSourceRef.current = null
     analyserRef.current = null
     silentGainRef.current = null
+    monitoringGainRef.current = null
     setUserAudioLevel(0)
     setUserWaveSamples(DEFAULT_WAVE_SAMPLES)
 
@@ -628,10 +650,27 @@ export function VoiceConsole({
     return true
   }, [])
 
+  const toggleMicMonitoring = useCallback((enabled: boolean) => {
+    setLocalMicMonitoring(enabled)
+    if (monitoringGainRef.current) {
+      monitoringGainRef.current.gain.value = enabled ? monitoringGain : 0
+    }
+  }, [monitoringGain])
+
+  useEffect(() => {
+    if (monitoringGainRef.current) {
+      monitoringGainRef.current.gain.value = localMicMonitoring ? monitoringGain : 0
+    }
+  }, [localMicMonitoring, monitoringGain])
+
   const startMicrophone = useCallback(async () => {
     const socket = websocketRef.current
     if (!socket || socket.readyState !== WebSocket.OPEN) {
       throw new Error('Open the voice session before enabling the microphone.')
+    }
+
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('getUserMedia is not a function (Microphone requires HTTPS/localhost)')
     }
 
     const mediaStream = await navigator.mediaDevices.getUserMedia({
@@ -650,6 +689,8 @@ export function VoiceConsole({
     const processor = captureContext.createScriptProcessor(4096, 1, 1)
     const silentGain = captureContext.createGain()
     silentGain.gain.value = 0
+    const monitoringGainNode = captureContext.createGain()
+    monitoringGainNode.gain.value = localMicMonitoring ? monitoringGain : 0
 
     processor.onaudioprocess = (event) => {
       if (
@@ -716,6 +757,8 @@ export function VoiceConsole({
     source.connect(processor)
     processor.connect(silentGain)
     silentGain.connect(captureContext.destination)
+    source.connect(monitoringGainNode)
+    monitoringGainNode.connect(captureContext.destination)
     micEnabledRef.current = true
     audioTurnOpenRef.current = false
     clearPendingSilenceFlush()
@@ -727,8 +770,9 @@ export function VoiceConsole({
     analyserRef.current = analyser
     captureProcessorRef.current = processor
     silentGainRef.current = silentGain
+    monitoringGainRef.current = monitoringGainNode
     await refreshInputDevices()
-  }, [clearPendingSilenceFlush, flushAudioTurn, openAudioTurn, refreshInputDevices, selectedInputId])
+  }, [clearPendingSilenceFlush, flushAudioTurn, openAudioTurn, refreshInputDevices, selectedInputId, localMicMonitoring, monitoringGain])
 
   const closeSession = useCallback(
     (options?: { allowReconnect?: boolean }) => {
@@ -837,9 +881,16 @@ export function VoiceConsole({
         }
 
         if (messageType === 'turn.complete') {
-          setTranscripts((current) =>
-            finalizeLatestTranscript(finalizeLatestTranscript(current, 'assistant'), 'user'),
-          )
+          setTranscripts((current) => {
+            const userEntry = current.findLast((e) => e.role === 'user' && !e.final)
+            const assistantEntry = current.findLast((e) => e.role === 'assistant' && !e.final)
+            
+            if (userEntry?.text || assistantEntry?.text) {
+              onTranscriptTurnComplete?.(userEntry?.text || '', assistantEntry?.text || '')
+            }
+
+            return finalizeLatestTranscript(finalizeLatestTranscript(current, 'assistant'), 'user')
+          })
           return
         }
 
@@ -1111,6 +1162,22 @@ export function VoiceConsole({
     </Button>
   )
 
+  useImperativeHandle(
+    ref,
+    () => ({
+      sendText: (text: string) => {
+        if (connectionState !== 'connected') return false
+        const sent = sendJson({ type: 'input.text', text })
+        if (sent) {
+          setStatusDetail('Sent your text into the live session.')
+        }
+        return sent
+      },
+      isConnected: connectionState === 'connected',
+    }),
+    [connectionState, sendJson],
+  )
+
   return (
     <Collapsible
       open={expanded}
@@ -1165,6 +1232,44 @@ export function VoiceConsole({
                   {isMicEnabled ? 'Mute the microphone' : 'Unmute the microphone'}
                 </TooltipContent>
               </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant={localMicMonitoring ? 'secondary' : 'outline'}
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => void toggleMicMonitoring(!localMicMonitoring)}
+                  >
+                    <Headphones className="size-4" />
+                    Monitor
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  {localMicMonitoring
+                    ? 'Disable local mic monitoring'
+                    : 'Enable local mic monitoring (for screen recording)'}
+                </TooltipContent>
+              </Tooltip>
+              {localMicMonitoring && (
+                <div className="flex items-center gap-2 px-2">
+                  <span className="text-xs text-muted-foreground">Level:</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={monitoringGain}
+                    onChange={(e) => {
+                      const value = parseFloat(e.target.value)
+                      setMonitoringGain(value)
+                      if (monitoringGainRef.current) {
+                        monitoringGainRef.current.gain.value = value
+                      }
+                    }}
+                    className="w-16 h-1 accent-primary"
+                  />
+                </div>
+              )}
               <Button
                 variant="destructive"
                 size="sm"
@@ -1276,10 +1381,14 @@ export function VoiceConsole({
                   )}
                 </SelectContent>
               </Select>
-              {inputLabelsHidden ? (
+              {inputLabelsHidden && window.isSecureContext ? (
                 <p className="text-[11px] leading-5 text-muted-foreground">
                   Browser is hiding real mic names. Allow microphone access and refresh to unlock
                   labels.
+                </p>
+              ) : !window.isSecureContext ? (
+                <p className="text-[11px] leading-5 text-destructive">
+                  Microphone access requires a secure context (HTTPS or localhost).
                 </p>
               ) : null}
             </div>
@@ -1333,10 +1442,14 @@ export function VoiceConsole({
                 <p className="text-[11px] leading-5 text-muted-foreground">
                   Speaker routing depends on browser support for output-device selection.
                 </p>
-              ) : outputLabelsHidden ? (
+              ) : outputLabelsHidden && window.isSecureContext ? (
                 <p className="text-[11px] leading-5 text-muted-foreground">
                   Browser is hiding real speaker names. Chromium reveals better labels after
                   media permission is granted.
+                </p>
+              ) : !window.isSecureContext ? (
+                <p className="text-[11px] leading-5 text-destructive">
+                  Device selection requires a secure context (HTTPS or localhost).
                 </p>
               ) : null}
             </div>
@@ -1416,4 +1529,4 @@ export function VoiceConsole({
       </CollapsibleContent>
     </Collapsible>
   )
-}
+})

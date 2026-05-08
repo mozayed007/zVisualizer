@@ -1,0 +1,29 @@
+# Database files
+*.db
+*.sqlite
+*.sqlite3
+*.db-journal
+*.db-shm
+*.db-wal
+
+# Data organization
+SVGs_Organized/
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Large data files
+*.csv
+*.json
+*.parquet
+*.pickle
+*.pkl
+*.h5
+*.hdf5
+
+# Generated data
+generated/
+output/
+results/
+*.log

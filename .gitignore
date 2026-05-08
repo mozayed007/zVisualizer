@@ -2,12 +2,20 @@
 .env
 .env.local
 .env.*.local
+.env.development.local
+.env.test.local
+.env.production.local
 docs/.env
 docs/.env.local
 docs/.env.*.local
+
+# AI/IDE specific
 .codex
 .cursor
 .gemini
+.claude/
+.agents/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -37,14 +45,41 @@ MANIFEST
 .pyre/
 .pytype/
 cython_debug/
+.hypothesis/
+.coverage
+htmlcov/
+.tox/
+.nox/
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
 
-# Virtual environments
-venv/
+# Python packaging & modern tools
 .venv/
+venv/
 env/
 ENV/
 env.bak/
 venv.bak/
+.conda/
+conda-meta/
+.conda-env/
+environment.yml
+environment-dev.yml
+Pipfile
+Pipfile.lock
+poetry.lock
+pyproject.toml.backup
+uv.lock
+.hatch/
+.hatchling/
+pixi.toml
+pixi.lock
 
 # Node/Frontend
 node_modules/
@@ -54,6 +89,9 @@ build/
 out/
 .next/
 .parcel-cache/
+.turbo/
+.swc/
+.vite/
 *.local
 
 # Logs
@@ -65,13 +103,8 @@ yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
-
-# Lock files (choose one based on your package manager)
-# Uncomment the one you use, comment out others
-# package-lock.json
-# yarn.lock
-# pnpm-lock.yaml
-# bun.lock
+bun.lockb
+.pnpm-debug.log*
 
 # Editor/IDE
 .vscode/
@@ -86,31 +119,142 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+.project
+.classpath
+.settings/
+*.sublime-project
+*.sublime-workspace
+.history/
+.spyderproject
+.spyproject
+.rope_project
+.workspaces/
+.fleet/
+.nova/
 
 # Testing
 coverage/
 .nyc_output/
 .kilo/
+test-results/
+playwright-report/
+
 # Archives
 *.tgz
 *.tar.gz
+*.zip
+*.rar
+*.7z
 
-# Data/SQLite
-data/*.db
+# Data/SQLite (handled by data/.gitignore)
+# Keep these for root-level database files
+*.db
+*.sqlite
+*.sqlite3
 
 # Demo/output artifacts
 offline_demo_*/
+screenshots/
+recordings/
 
-# Misc
+# Security and sensitive files
 .cache/
 *.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
 *.env
+*.secret
+*.credentials
+.secrets/
+credentials.json
+service-account.json
+id_rsa
+id_rsa.pub
+*.ppk
+*.asc
+*.gpg
+known_hosts
+authorized_keys
+*.token
+*.auth
+*.session
+*.cookie
+*.jar
+*.war
+*.ear
+*.class
 
-# Scripts logs and PID files
-scripts/logs/
-scripts/*.pid
-scripts/
-data/SVGs_Organized/
+# Docker
+.dockerignore
+docker-compose.override.yml
+
+# Scripts logs and PID files (handled by scripts/.gitignore)
+# scripts/logs/
+# scripts/*.pid
+# scripts/temp/
+# scripts/tmp/
+# scripts/*.log
+
+# Data organization (handled by data/.gitignore)
+# data/SVGs_Organized/
+# data/temp/
+# data/tmp/
+
+# MCP and tooling
 .mcp.json
 .zed/
 opencode.json
+.devin/
+.flaek/
+
+# OS specific
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb_checkpoints/
+*.ipynb
+
+# Database
+*.sql
+*.sqlite
+*.sqlite3
+*.db
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+*.bak
+*.backup
+*.swp
+*.swo
+*~.nib
+
+# Build artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.app
+*.i*86
+*.x86_64
+*.hex
