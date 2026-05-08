@@ -266,9 +266,39 @@ class LiveDialogueService:
         websocket: WebSocket,
         state: LiveSessionState,
     ) -> None:
+        expected = self.settings.chat_api_key
+        authenticated = expected is None  # If no key required, consider authenticated
+        
         while True:
             payload = await websocket.receive_json()
             message_type = payload.get("type")
+
+            # Handle authentication message
+            if message_type == "auth":
+                token = self._clean_optional_str(payload.get("token"))
+                if expected is not None and token == expected.get_secret_value():
+                    authenticated = True
+                    await self._send_json(
+                        websocket,
+                        {"type": "auth.success", "detail": "Authentication successful"}
+                    )
+                else:
+                    await self._send_json(
+                        websocket,
+                        {"type": "error", "detail": "Authentication failed"}
+                    )
+                    await websocket.close(code=4401, reason="Invalid or missing API key")
+                    return
+                continue
+
+            # Require authentication before processing other messages
+            if not authenticated and expected is not None:
+                await self._send_json(
+                    websocket,
+                    {"type": "error", "detail": "Authentication required"}
+                )
+                await websocket.close(code=4401, reason="Authentication required")
+                return
 
             if message_type == "session.update":
                 state.selected_agent_id = (

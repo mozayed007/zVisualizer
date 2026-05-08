@@ -57,6 +57,12 @@ class ChatRequest(BaseModel):
         return text[7:] if text.startswith("models/") else text
 
 
+class SyncVoiceRequest(BaseModel):
+    conversation_id: str | None = None
+    user_text: str
+    assistant_text: str
+
+
 class WidgetPayload(BaseModel):
     title: str
     loading_messages: list[str]
@@ -66,39 +72,73 @@ class WidgetPayload(BaseModel):
 
 class AvailableModel(BaseModel):
     id: str
-    resource_name: str
-    display_name: str
+    resource_name: str = Field(alias="resourceName")
+    display_name: str = Field(alias="displayName")
     description: str | None = None
-    input_token_limit: int | None = None
-    output_token_limit: int | None = None
-    supported_generation_methods: list[str] = Field(default_factory=list)
+    input_token_limit: int | None = Field(alias="inputTokenLimit", default=None)
+    output_token_limit: int | None = Field(alias="outputTokenLimit", default=None)
+    supported_generation_methods: list[str] = Field(
+        alias="supportedGenerationMethods", default_factory=list
+    )
     thinking: bool = False
-    chat_compatible: bool = False
-    is_default: bool = False
+    chat_compatible: bool = Field(alias="chatCompatible", default=False)
+    is_default: bool = Field(alias="isDefault", default=False)
+
+    class Config:
+        populate_by_name = True
 
 
 class ModelCatalogResponse(BaseModel):
-    default_model: str
+    default_model: str = Field(alias="defaultModel")
     models: list[AvailableModel]
+
+    class Config:
+        populate_by_name = True
 
 
 class AvailableAgent(BaseModel):
     id: str
     name: str
-    display_name: str
+    display_name: str = Field(alias="displayName")
     description: str | None = None
     provider: str
-    default_model: str
+    default_model: str = Field(alias="defaultModel")
+
+    class Config:
+        populate_by_name = True
 
 
 class AgentCatalogResponse(BaseModel):
-    default_agent_id: str
+    default_agent_id: str = Field(alias="defaultAgentId")
     agents: list[AvailableAgent]
+
+    class Config:
+        populate_by_name = True
 
 
 class StreamEvent(BaseModel):
     type: str
     data: dict[str, Any] = Field(default_factory=dict)
+
+
+class WebSocketParams(BaseModel):
+    conversation_id: str | None = None
+    agent_id: str | None = None
+    model: str | None = None
+    subject: str | None = None
+
+    @field_validator("agent_id", "model", "subject")
+    @classmethod
+    def sanitize_string(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        text = value.strip()
+        if not text:
+            return None
+        # Basic sanitization to prevent injection
+        if len(text) > 1000:
+            raise ValueError("String too long")
+        return text
 
 
 class ConversationRecord(BaseModel):

@@ -38,11 +38,18 @@ export interface AssistantMessage {
 
 export type ChatMessage = UserMessage | AssistantMessage
 
+export interface LearnerProfile {
+  concepts_seen: string[]
+  struggling_with: string[]
+  interaction_count: number
+}
+
 export interface ChatRequest {
   conversation_id?: string
   message: string
   subject?: string
   agent_id?: string
+  learner_profile?: LearnerProfile
   model?: string
   from_widget?: string
 }

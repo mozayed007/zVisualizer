@@ -10,13 +10,14 @@ from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware import Middleware
 from starlette.websockets import WebSocketState
 
 from app.core.errors import AppError, NotFoundAppError
 from app.core.logging import configure_logging
 from app.core.settings import BACKEND_ENV_PATH, ROOT_ENV_PATH, get_settings
-from app.models.chat import ChatRequest
+from app.models.chat import ChatRequest, SyncVoiceRequest, WebSocketParams
 from app.services.chat_service import ChatService
 from app.services.live_dialogue_service import LiveDialogueService
 from app.services.model_catalog import ModelCatalogService
@@ -83,15 +84,11 @@ async def _authorize_live_websocket(websocket: WebSocket) -> bool:
     expected = settings.chat_api_key
     if expected is None:
         return True
-    token = _extract_bearer_token(websocket.headers.get("authorization"))
-    if not token:
-        token = websocket.query_params.get("api_key", "")
-    if token == expected.get_secret_value():
-        return True
+    # Note: API key is now sent in first message, not query parameters
+    # This function now just accepts the connection; actual auth happens in message handling
     if websocket.application_state == WebSocketState.CONNECTING:
         await websocket.accept()
-    await websocket.close(code=4401, reason="Invalid or missing API key")
-    return False
+    return True
 
 
 @asynccontextmanager
@@ -110,7 +107,12 @@ app = FastAPI(
             allow_origins=[settings.frontend_origin],
             allow_credentials=False,
             allow_methods=["GET", "POST", "OPTIONS"],
-            allow_headers=["*"],
+            allow_headers=[
+                "Content-Type",
+                "Authorization",
+                "X-Request-ID",
+                "X-Forwarded-For"
+            ],
         )
     ],
 )
@@ -149,6 +151,35 @@ async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         status_code=exc.status_code,
         content=exc.to_dict(getattr(request.state, "request_id", None)),
     )
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException) -> JSONResponse:
+    # Standardize HTTPException responses to match AppError format
+    request_id = getattr(request.state, "request_id", None)
+    content: dict[str, Any] = {
+        "title": "HTTP_ERROR",
+        "status": exc.status_code,
+        "detail": exc.detail,
+    }
+    if request_id is not None:
+        content["request_id"] = request_id
+    return JSONResponse(status_code=exc.status_code, content=content)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
+    # Standardize validation errors to match AppError format
+    request_id = getattr(request.state, "request_id", None)
+    content: dict[str, Any] = {
+        "title": "VALIDATION_ERROR",
+        "status": 422,
+        "detail": "Request validation failed",
+        "details": {"errors": exc.errors()},
+    }
+    if request_id is not None:
+        content["request_id"] = request_id
+    return JSONResponse(status_code=422, content=content)
 
 
 @app.get("/health")
@@ -253,16 +284,38 @@ async def chat_endpoint(
     )
 
 
+@app.post("/api/chat/sync_voice")
+async def sync_voice_endpoint(
+    request: Request,
+    payload: SyncVoiceRequest,
+    _: None = Depends(_verify_chat_api_key),
+) -> JSONResponse:
+    conv_id = await chat_service.sync_voice_turn(payload)
+    return JSONResponse(content={"status": "ok", "conversation_id": conv_id})
+
+
 @app.websocket("/api/live")
 async def live_endpoint(websocket: WebSocket) -> None:
     if not await _authorize_live_websocket(websocket):
         return
 
+    # Validate WebSocket parameters
+    try:
+        params = WebSocketParams(
+            conversation_id=websocket.query_params.get("conversation_id"),
+            agent_id=websocket.query_params.get("agent_id"),
+            model=websocket.query_params.get("model"),
+            subject=websocket.query_params.get("subject"),
+        )
+    except Exception as validation_error:
+        await websocket.close(code=4000, reason="Invalid parameters")
+        return
+
     await live_dialogue_service.handle_websocket(
         websocket,
         client_id=_client_id_from_websocket(websocket),
-        conversation_id=websocket.query_params.get("conversation_id"),
-        agent_id=websocket.query_params.get("agent_id"),
-        model=websocket.query_params.get("model"),
-        subject=websocket.query_params.get("subject"),
+        conversation_id=params.conversation_id,
+        agent_id=params.agent_id,
+        model=params.model,
+        subject=params.subject,
     )

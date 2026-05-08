@@ -82,7 +82,7 @@ function buildSessionUrl(baseUrl: string, params: Record<string, string | undefi
   for (const [key, value] of Object.entries(params)) {
     if (value) url.searchParams.set(key, value)
   }
-  if (chatApiKey) url.searchParams.set('api_key', chatApiKey)
+  // Removed API key from URL for security - will be sent in first message
   return url.toString()
 }
 
@@ -827,8 +827,17 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
       reconnectAttemptsRef.current = 0
       shouldAutoReconnectRef.current = true
       setConnectionState('connected')
-      setStatusDetail('Voice session connected. Requesting microphone access…')
+      setStatusDetail('Voice session connected. Authenticating…')
+      
       try {
+        // Send authentication token in first message for security
+        if (chatApiKey) {
+          sendJson({
+            type: 'auth',
+            token: chatApiKey
+          })
+        }
+        
         await ensurePlaybackContext()
         await applySpeakerSelection(selectedOutputId)
         if (desiredMicEnabledRef.current) {
@@ -968,8 +977,28 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
       }
     }
 
-    socket.onerror = () => {
-      setErrorMessage('The realtime voice socket hit a transport error.')
+    socket.onerror = (error) => {
+      console.error('WebSocket error:', error)
+      
+      // Classify error type for better user feedback
+      let errorMessage = 'Connection error occurred.'
+      if (error instanceof ErrorEvent) {
+        if (error.message.includes('401') || error.message.includes('403')) {
+          errorMessage = 'Authentication failed. Check your API key.'
+          shouldAutoReconnectRef.current = false // Don't reconnect on auth errors
+        } else if (error.message.includes('404')) {
+          errorMessage = 'Service not found. Check backend URL.'
+          shouldAutoReconnectRef.current = false
+        } else if (error.message.includes('timeout') || error.message.includes('ECONNREFUSED')) {
+          errorMessage = 'Connection timeout. Retrying...'
+          // Allow reconnection for network errors
+        } else {
+          errorMessage = `Connection error: ${error.message}`
+        }
+      }
+      
+      setErrorMessage(errorMessage)
+      setConnectionState('disconnected')
     }
 
     socket.onclose = () => {
@@ -980,15 +1009,21 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
       stopPlayback()
       setConnectionState('disconnected')
       setIsMicEnabled(false)
+      
       if (shouldAutoReconnectRef.current && reconnectAttemptsRef.current < 8) {
         reconnectAttemptsRef.current += 1
-        setStatusDetail('Voice session dropped. Reconnecting…')
+        const attempt = reconnectAttemptsRef.current
+        setStatusDetail(`Voice session dropped. Reconnecting… (attempt ${attempt}/8)`)
         clearReconnectTimeout()
+        
+        // Exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s, max 60s
+        const backoffDelay = Math.min(1000 * Math.pow(2, attempt - 1), 60000)
+        
         reconnectTimeoutRef.current = window.setTimeout(() => {
           reconnectTimeoutRef.current = null
           if (!shouldAutoReconnectRef.current || !canUseVoice) return
           void openSessionRef.current()
-        }, 900)
+        }, backoffDelay)
         return
       }
       shouldAutoReconnectRef.current = false

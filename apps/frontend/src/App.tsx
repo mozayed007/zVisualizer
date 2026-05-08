@@ -4,13 +4,15 @@ import { ChatPanel } from '@/components/chat/ChatPanel'
 import { Composer } from '@/components/chat/Composer'
 import { TopBar } from '@/components/layout/TopBar'
 import { TooltipProvider } from '@/components/ui/tooltip'
-import { VoiceConsole } from '@/components/voice/VoiceConsole'
+import { VoiceConsole, type VoiceConsoleRef } from '@/components/voice/VoiceConsole'
 import { useTheme } from '@/hooks/useTheme'
+import { useLearnerProfile } from '@/hooks/useLearnerProfile'
 import {
   getAvailableAgents,
   getAvailableModels,
   getRuntimeStatus,
   streamChat,
+  syncVoiceTurn,
 } from '@/lib/chatApi'
 import type {
   AgentCatalogResponse,
@@ -69,6 +71,7 @@ function findLatestAssistantIndex(messages: ChatMessage[], allowClosed: boolean)
 
 export default function App() {
   const { theme, toggleTheme } = useTheme()
+  const { profile, incrementInteraction } = useLearnerProfile()
 
   const [conversationId, setConversationId] = useState<string>()
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -93,6 +96,7 @@ export default function App() {
   const activeAssistantIdRef = useRef<string | null>(null)
   const hasAppliedInitialAgentSelectionRef = useRef(false)
   const activeStreamAbortRef = useRef<AbortController | null>(null)
+  const voiceConsoleRef = useRef<VoiceConsoleRef>(null)
 
   const chatCompatibleModels = useMemo(
     () => modelCatalog?.models.filter((model) => model.chat_compatible) ?? [],
@@ -511,6 +515,18 @@ export default function App() {
       const value = text.trim()
       if (!value || isSending || runtime?.ready === false) return
 
+      if (voiceConsoleRef.current?.isConnected) {
+        let liveText = value
+        if (options?.from_widget) {
+          liveText = `I just clicked on the hyperlink "${value}" in the visual "${options.from_widget}". Please generate a new visual for this and explain it.`
+        }
+        const sent = voiceConsoleRef.current.sendText(liveText)
+        if (sent) {
+          setInput('')
+        }
+        return
+      }
+
       setError(null)
       setInput('')
       setIsSending(true)
@@ -534,11 +550,13 @@ export default function App() {
       const abortController = new AbortController()
       activeStreamAbortRef.current = abortController
       try {
+        incrementInteraction()
         await streamChat(
           {
             conversation_id: conversationId,
             message: value,
             agent_id: selectedAgent || undefined,
+            learner_profile: profile,
             model: selectedModel || undefined,
             from_widget: options?.from_widget,
           },
@@ -639,6 +657,47 @@ export default function App() {
     ])
   }, [])
 
+  const handleTranscriptTurnComplete = useCallback(
+    async (userText: string, assistantText: string) => {
+      const uText = userText.trim()
+      const aText = assistantText.trim()
+      if (!uText && !aText) return
+
+      const newMessages: ChatMessage[] = []
+      if (uText) {
+        newMessages.push({ id: crypto.randomUUID(), role: 'user', text: uText })
+      }
+      if (aText) {
+        const assistantMessage = createAssistantMessage()
+        assistantMessage.answerText = aText
+        assistantMessage.isStreaming = false
+        assistantMessage.status = {
+          stage: 'completed',
+          label: 'Completed',
+          detail: 'Voice transcript saved.',
+          state: 'completed',
+        }
+        newMessages.push(assistantMessage)
+      }
+
+      setMessages((current) => [...current, ...newMessages])
+
+      try {
+        const result = await syncVoiceTurn({
+          conversation_id: conversationId || undefined,
+          user_text: uText,
+          assistant_text: aText,
+        })
+        if (!conversationId && result.conversation_id) {
+          setConversationId(result.conversation_id)
+        }
+      } catch (err) {
+        console.error('Failed to sync voice turn', err)
+      }
+    },
+    [conversationId],
+  )
+
   return (
     <TooltipProvider delayDuration={150}>
       <div className="flex min-h-screen flex-col bg-background text-foreground">
@@ -666,12 +725,14 @@ export default function App() {
 
         <div className="w-full px-4 pt-4 md:px-8">
           <VoiceConsole
+            ref={voiceConsoleRef}
             runtime={runtime}
             selectedAgent={selectedAgent}
             selectedModel={selectedModel}
             conversationId={conversationId}
             onDelegatedTurnStart={startDelegatedTurn}
             onDelegatedServerEvent={applyServerEvent}
+            onTranscriptTurnComplete={handleTranscriptTurnComplete}
           />
         </div>
 
