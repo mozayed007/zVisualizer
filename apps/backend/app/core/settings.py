@@ -116,15 +116,13 @@ class Settings(BaseSettings):
     google_allowed_url_domains: Annotated[list[str], NoDecode] = Field(
         default_factory=lambda: list(DEFAULT_GOOGLE_ALLOWED_URL_DOMAINS)
     )
-    google_extra_allowed_url_domains: Annotated[list[str], NoDecode] = Field(
-        default_factory=list
-    )
+    google_extra_allowed_url_domains: Annotated[list[str], NoDecode] = Field(default_factory=list)
 
     max_conversation_turns: int = 200
     max_message_chars: int = 60_000
     enable_widget_cache: bool = True
     enable_learner_profiles: bool = True
-    agent_load_full_skill_docs_on_session_start: bool = False
+    agent_load_full_skill_docs_on_session_start: bool = True
 
     chat_api_key: SecretStr | None = Field(
         default=None,
@@ -196,10 +194,7 @@ class Settings(BaseSettings):
         configured = self.google_fallback_model_name
         if configured == "gemini-3.1-flash-lite-preview":
             configured = "gemini-3-flash-preview"
-        if (
-            configured
-            and configured != primary_model
-        ):
+        if configured and configured != primary_model:
             return configured
         if primary_model.startswith("gemini-3.1-pro-preview"):
             return "gemini-2.5-pro"
@@ -229,10 +224,7 @@ class Settings(BaseSettings):
         configured = self.google_visual_recovery_model_name
         if configured == "gemini-3.1-flash-lite-preview":
             configured = "gemini-3-flash-preview"
-        if (
-            configured
-            and configured != primary_model
-        ):
+        if configured and configured != primary_model:
             return configured
         if primary_model.startswith("gemini-3.1-pro-preview"):
             return "gemini-2.5-pro"

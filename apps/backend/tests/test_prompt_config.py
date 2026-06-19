@@ -12,9 +12,7 @@ from app.core.settings import Settings
 CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "agent.visual.yaml"
 SVG_CONFIG_PATH = Path(__file__).resolve().parents[3] / "config" / "agent.svg.yaml"
 FULL_SKILL_DOC_SNIPPET = "| File | Purpose | When to load |"
-PLATFORM_REQUIREMENTS_BODY_SNIPPET = (
-    "iframe.sandbox = 'allow-scripts allow-popups-to-escape-sandbox';"
-)
+PLATFORM_REQUIREMENTS_BODY_SNIPPET = "iframe.sandbox = 'allow-scripts allow-popups-to-escape-sandbox';"
 
 
 def test_agent_config_loads_source_docs() -> None:
@@ -30,7 +28,7 @@ def test_agent_config_loads_source_docs() -> None:
 def test_system_prompt_uses_distilled_runtime_rules() -> None:
     config = load_agent_config_from_path(CONFIG_PATH)
 
-    prompt = build_system_prompt(config)
+    prompt = build_system_prompt(config, load_full_skill_docs_on_session_start=False)
 
     assert "show_widget" in prompt
     assert "Quality bar:" in prompt
@@ -39,7 +37,8 @@ def test_system_prompt_uses_distilled_runtime_rules() -> None:
     assert "configured source docs are runtime context" in prompt
     assert "Use SVG for reference maps, architecture, containment, and mechanism visuals" in prompt
     assert "Use HTML widgets when the underlying system has a control" in prompt
-    assert "Use HTML widgets for comparisons of parameterized systems" in prompt
+    assert "tunable parameters" in prompt
+    assert "interactive HTML widget" in prompt
     assert "claude-visuals-guide-v2.html" in prompt
     assert "Widget output contract:" in prompt
     assert "HTML widget contract:" in prompt
@@ -55,7 +54,7 @@ def test_system_prompt_uses_distilled_runtime_rules() -> None:
 def test_visual_generation_prompt_contains_distilled_guide_rules() -> None:
     config = load_agent_config_from_path(CONFIG_PATH)
 
-    prompt = build_visual_generation_prompt(config)
+    prompt = build_visual_generation_prompt(config, load_full_skill_docs_on_session_start=False)
 
     assert "Return structured widget data only." in prompt
     assert "for SVG, use viewBox='0 0 680 H' and include arrow defs" in prompt
@@ -84,12 +83,12 @@ def test_compiled_system_prompt_respects_full_skill_doc_setting() -> None:
     assert "Authoritative source-doc contract excerpts" in excerpt_prompt
     assert FULL_SKILL_DOC_SNIPPET in full_prompt
     assert "master_skill (docs/visualizer_skill/SKILL.md) full text:" in full_prompt
-    assert "full skill docs enabled for docs/skill/*.md" in full_prompt
+    assert "priority skill docs inlined in full" in full_prompt
     assert PLATFORM_REQUIREMENTS_BODY_SNIPPET not in full_prompt
     assert "platform_requirements (docs/PLATFORM-REQUIREMENTS.md):" in full_prompt
 
 
-def test_visual_generation_prompt_can_inline_full_skill_docs_only() -> None:
+def test_visual_generation_prompt_can_inline_priority_skill_docs_only() -> None:
     config = load_agent_config_from_path(CONFIG_PATH)
 
     prompt = build_visual_generation_prompt(
@@ -99,8 +98,11 @@ def test_visual_generation_prompt_can_inline_full_skill_docs_only() -> None:
 
     assert FULL_SKILL_DOC_SNIPPET in prompt
     assert "master_skill (docs/visualizer_skill/SKILL.md) full text:" in prompt
+    assert "design_system (docs/visualizer_skill/design-system.md) full text:" in prompt
     assert PLATFORM_REQUIREMENTS_BODY_SNIPPET not in prompt
     assert "platform_requirements (docs/PLATFORM-REQUIREMENTS.md):" in prompt
+    assert "svg_generation (docs/visualizer_skill/svg-generation.md):" in prompt
+    assert "svg_generation (docs/visualizer_skill/svg-generation.md) full text:" not in prompt
 
 
 def test_svg_agent_config_loads_source_docs() -> None:
@@ -108,10 +110,40 @@ def test_svg_agent_config_loads_source_docs() -> None:
 
     assert config.agent.id == "svg"
     assert config.agent.display_name == "SVG Agent"
+    assert config.agent.tool.template_id_required is True
     assert any(doc.path == "docs/svg_skill/SKILL.md" for doc in config.agent.source_docs)
-    assert any(
-        doc.path == "docs/svg_skill/violation-detection.md" for doc in config.agent.source_docs
-    )
+    assert any(doc.path == "docs/svg_skill/violation-detection.md" for doc in config.agent.source_docs)
+
+
+def test_svg_system_prompt_excludes_visualizer_html_contract() -> None:
+    config = load_agent_config_from_path(SVG_CONFIG_PATH)
+
+    prompt = build_system_prompt(config, load_full_skill_docs_on_session_start=False)
+
+    assert "expert SVG template operator" in prompt
+    assert "HTML widget contract:" not in prompt
+    assert "viewBox='0 0 680 H'" not in prompt
+    assert "claude-visuals-guide-v2" not in prompt
+    assert "Color variety contract:" not in prompt
+
+
+def test_svg_system_prompt_includes_template_identity_rules() -> None:
+    config = load_agent_config_from_path(SVG_CONFIG_PATH)
+
+    prompt = build_system_prompt(config, load_full_skill_docs_on_session_start=False)
+
+    assert "template_id is required on every call" in prompt
+    assert "Preserve source-template identity" in prompt
+    assert "DISCOVER → SELECT → CLONE" in prompt
+
+
+def test_visualizer_system_prompt_still_includes_html_contract() -> None:
+    config = load_agent_config_from_path(CONFIG_PATH)
+
+    prompt = build_system_prompt(config, load_full_skill_docs_on_session_start=False)
+
+    assert "HTML widget contract:" in prompt
+    assert "viewBox='0 0 680 H'" in prompt
 
 
 def test_agent_registry_discovers_visualizer_and_svg_agents() -> None:
@@ -140,3 +172,4 @@ def test_agent_registry_accepts_display_name_alias_case_insensitively() -> None:
     bundle = registry.get("Visualizer")
 
     assert bundle.config.agent.id == "visualizer"
+    assert bundle.widget_fallback_prompt

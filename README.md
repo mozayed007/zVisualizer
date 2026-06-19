@@ -35,6 +35,17 @@ A visual learning companion powered by **PydanticAI** and **Google Gemini**. Ask
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
+## Dual agents
+
+The backend loads two YAML-defined agents from `config/`:
+
+| Agent ID | Config | Purpose |
+|----------|--------|---------|
+| `visualizer` (default) | `agent.visual.yaml` | Educational SVG/HTML widgets via `show_widget(title, loading_messages, widget_code)` |
+| `svg` | `agent.svg.yaml` | Branded template population; `show_widget` also requires `template_id` (library relative path, e.g. `versus/compare.svg`) |
+
+Select an agent per chat request via `agent_id`. The SVG agent validates every `widget_code` clone against the source template before render. Template files live under `data/SVGs_Organized/`.
+
 ## Quick Start
 
 ### Prerequisites
@@ -487,6 +498,68 @@ VITE_CHAT_API_KEY=your-secret-api-key
 # Optional database (defaults to data/conversations.db)
 DATABASE_PATH=/path/to/conversations.db
 ```
+
+### Docker Compose
+
+The repository includes a production-style `docker-compose.yml` that builds:
+
+- `backend`: FastAPI + PydanticAI app on internal port `8000`
+- `frontend`: static Vite build served by Nginx on port `80`
+- `conversations-data`: named volume for the SQLite conversation store
+
+#### 1. Prepare environment
+
+```bash
+cp .env.example .env
+```
+
+Set at least:
+
+```bash
+GOOGLE_API_KEY=your_production_api_key
+GEMINI_API_KEY=your_production_api_key
+FRONTEND_ORIGIN=http://localhost
+```
+
+Recommended for Compose:
+
+```bash
+# Let the frontend use same-origin /api via the bundled Nginx reverse proxy
+PUBLIC_VITE_API_BASE_URL=
+
+# Optional published HTTP port
+FRONTEND_PORT=80
+
+# Optional shared API key between browser and backend
+# CHAT_API_KEY=your-long-random-secret
+# PUBLIC_VITE_CHAT_API_KEY=your-long-random-secret
+```
+
+#### 2. Build and start
+
+```bash
+docker compose up --build -d
+```
+
+The app will be available at `http://localhost` by default, or at `http://localhost:<FRONTEND_PORT>` if you change the published port.
+
+#### 3. Stop the stack
+
+```bash
+docker compose down
+```
+
+To also remove the persisted SQLite volume:
+
+```bash
+docker compose down -v
+```
+
+#### Notes
+
+- The frontend container proxies `/api/*` requests, including SSE and WebSocket traffic, to the backend container.
+- SQLite data is persisted in the `conversations-data` named volume mounted at `/app/data`.
+- If you deploy behind a real domain, set `FRONTEND_ORIGIN` to that public origin before starting the stack.
 
 ## License
 

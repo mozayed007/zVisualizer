@@ -113,6 +113,44 @@ class SvgLibraryService:
             content_lines=requested_lines,
         )
 
+    def resolve_template(self, template_id: str) -> SvgTemplateRecord:
+        normalized = template_id.strip().replace("\\", "/").lstrip("/")
+        if not normalized:
+            raise ValidationAppError(
+                "template_id cannot be empty.",
+                details={"validator": "svg_library_service", "template_id": template_id},
+            )
+        if ".." in normalized.split("/"):
+            raise ValidationAppError(
+                f"template_id '{normalized}' is not allowed.",
+                details={"validator": "svg_library_service", "template_id": template_id},
+            )
+
+        for template in self.list_templates():
+            if template.relative_path == normalized:
+                return template
+
+        raise ValidationAppError(
+            f"Unknown template_id '{normalized}'.",
+            details={
+                "validator": "svg_library_service",
+                "template_id": normalized,
+                "library_root": str(self.library_root),
+            },
+        )
+
+    def read_source_svg(self, template: SvgTemplateRecord) -> str:
+        try:
+            return template.path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ValidationAppError(
+                f"Could not read SVG template '{template.relative_path}'.",
+                details={
+                    "validator": "svg_library_service",
+                    "template_relative_path": template.relative_path,
+                },
+            ) from exc
+
     def list_templates(self) -> list[SvgTemplateRecord]:
         if self._template_cache is not None:
             return self._template_cache

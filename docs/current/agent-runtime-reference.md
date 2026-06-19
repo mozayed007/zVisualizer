@@ -21,10 +21,20 @@ The main runtime lives in:
 - `apps/backend/app/agent/prompt.py`
 - `apps/backend/app/agent/widget_validator.py`
 - `config/agent.visual.yaml`
+- `config/agent.svg.yaml`
 
-## Agent identity
+## Registered agents
 
-The agent identity comes from `config/agent.visual.yaml`:
+| `agent_id` | Config | Default? |
+|------------|--------|------------|
+| `visualizer` | `config/agent.visual.yaml` | Yes |
+| `svg` | `config/agent.svg.yaml` | No |
+
+`AgentRegistry` compiles a separate system prompt per agent. Visualizer prompts include HTML/SVG educational rules. SVG prompts include template identity and `template_id` requirements only.
+
+## Visualizer agent identity
+
+The visualizer identity comes from `config/agent.visual.yaml`:
 
 - Name: `visual-learning-companion`
 - Provider: `google-gla`
@@ -101,15 +111,29 @@ There is also a second, narrower agent used only for fallback visual generation.
 
 ## Model-visible tools
 
-The main chat agent exposes exactly **one tool** to the model:
+Both chat agents expose exactly **one tool** to the model:
 
-- `show_widget(title, loading_messages, widget_code)`
+- `show_widget(title, loading_messages, widget_code, template_id=None)`
 
-Tool contract:
+### Visualizer (`agent_id=visualizer`)
+
+- `template_id` is ignored
+- `widget_code` must be raw SVG (educational contract) or raw HTML fragment
+- Validated by `build_widget_payload` plus `svg_geometry_validator`
+- Failed raw SVG geometry may auto-repair via `svg_vision_repair_service.repair_raw_visualizer_svg`
+
+### SVG template agent (`agent_id=svg`)
+
+- `template_id` is **required** (library relative path under `svg_library_root`, e.g. `sequence/sequence-4.svg`)
+- `widget_code` must be the populated working clone as raw `<svg>` only
+- Validated by `build_validated_template_widget_payload`, which runs `validate_svg_template_instance` against the source template
+- Structural failures may auto-repair via `svg_vision_repair_service.repair_from_validation_error`
+- Fallback when the model skips the tool uses `SvgLibraryService.build_widget_for_request` server-side
+
+Shared tool contract:
 
 - `title` must be short `snake_case`
 - `loading_messages` must contain 1 to 4 short strings
-- `widget_code` must be raw SVG or raw HTML fragment
 
 Important distinction:
 
@@ -117,7 +141,7 @@ Important distinction:
 - The **host platform** later renders the widget in a sandboxed iframe
 - The iframe also gets `sendPrompt()` and `openLink()` injected, but those are widget-runtime bridge functions, not LLM tools
 
-The fallback visual agent exposes **no callable tool**. It returns a structured `VisualWidgetDraft` object that is validated server-side before being sent to the frontend.
+The visualizer fallback agent exposes **no callable tool**. It returns a structured `VisualWidgetDraft` object that is validated server-side before being sent to the frontend. The SVG agent fallback uses the template library service instead.
 
 ## What context is preloaded before each run
 
@@ -160,14 +184,10 @@ Configured source docs:
 Important nuance:
 
 - the config says source docs are mandatory
-- by default the runtime does **not** inject full documents
-- `prompt.py` extracts **keyword-filtered excerpts** from each file
-- the main system prompt takes up to **12 lines per file**
-- the fallback visual prompt takes up to **8 lines per file**
-- if `AGENT_LOAD_FULL_SKILL_DOCS_ON_SESSION_START=true`, files under `docs/skill/*.md` are embedded as full text in both compiled prompts
-- non-skill source docs such as `docs/PLATFORM-REQUIREMENTS.md` stay on the excerpt path
-
-So excerpt mode is the default, and full-text loading is an opt-in path for skill markdown only.
+- by default (`AGENT_LOAD_FULL_SKILL_DOCS_ON_SESSION_START=true`) priority skill docs are inlined in full: `master_skill`, routing (`visual_routing` / `template_routing`), and design (`design_system` / `brand_system`)
+- remaining skill docs use **keyword-filtered excerpts** (12 lines per file in the system prompt, 8 in the fallback prompt)
+- non-skill source docs such as `docs/PLATFORM-REQUIREMENTS.md` always stay on the excerpt path
+- set `AGENT_LOAD_FULL_SKILL_DOCS_ON_SESSION_START=false` to use excerpts for all skill docs
 
 ### 3. Dynamic per-request context
 

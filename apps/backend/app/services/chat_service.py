@@ -26,16 +26,17 @@ from pydantic_ai import (
 )
 from pydantic_ai.builtin_tools import WebFetchTool, WebSearchTool
 from pydantic_ai.exceptions import ModelHTTPError, ModelRetry, UnexpectedModelBehavior
+from pydantic_ai.messages import ModelRequest, ModelResponse, TextPart, UserPromptPart
 from pydantic_ai.models.google import GoogleModelSettings
 from pydantic_ai.providers.google import GoogleProvider
 
-from app.agent.config import VisualAgentConfig
+from app.agent.config import AgentConfig
 from app.agent.registry import AgentPromptBundle, AgentRegistry
 from app.agent.svg_library import SvgLibraryService
 from app.agent.svg_preview_renderer import ExternalSvgPreviewRenderer
 from app.agent.svg_vision_repair import SvgVisionRepairService
 from app.agent.widget_validator import (
-    build_template_instance_widget_payload,
+    build_validated_template_widget_payload,
     build_widget_payload,
 )
 from app.core.errors import (
@@ -46,7 +47,7 @@ from app.core.errors import (
     ValidationAppError,
 )
 from app.core.settings import Settings, get_settings
-from app.models.chat import ChatRequest, ConversationRecord, StreamEvent, WidgetPayload
+from app.models.chat import ChatRequest, ConversationRecord, StreamEvent, SyncVoiceRequest, WidgetPayload
 from app.repositories.conversations import (
     ConversationRepository,
     SqliteConversationRepository,
@@ -92,7 +93,7 @@ class StreamEventSink:
 @dataclass(slots=True)
 class AgentDependencies:
     agent_id: str
-    config: VisualAgentConfig
+    config: AgentConfig
     conversation: ConversationRecord
     event_sink: StreamEventSink
     wants_visual: bool
@@ -129,9 +130,7 @@ class ChatService:
         self.svg_library_service = SvgLibraryService(self.settings.svg_library_root)
         self.svg_vision_repair_service = SvgVisionRepairService(
             api_key=(
-                self.settings.google_api_key.get_secret_value()
-                if self.settings.google_api_key is not None
-                else None
+                self.settings.google_api_key.get_secret_value() if self.settings.google_api_key is not None else None
             ),
             model_name=self.settings.google_visual_recovery_model_name,
             service_tier=self.settings.google_service_tier,
@@ -226,6 +225,11 @@ class ChatService:
                     "The learner explicitly requested a visual. You must call "
                     "show_widget at least once before finishing unless it is impossible."
                 )
+            if ctx.deps.agent_id == "svg":
+                lines.append(
+                    "SVG tool contract: every show_widget call must pass template_id "
+                    "as the library relative path (for example sequence/sequence-4.svg)."
+                )
             return "\n".join(lines)
 
         @built_agent.tool
@@ -234,11 +238,10 @@ class ChatService:
             title: str,
             loading_messages: list[str],
             widget_code: str,
+            template_id: str | None = None,
         ) -> str:
             try:
-                cache_key = hashlib.sha256(
-                    f"{title}\0{widget_code}".encode("utf-8", errors="replace")
-                ).hexdigest()
+                cache_key = hashlib.sha256(f"{title}\0{widget_code}".encode("utf-8", errors="replace")).hexdigest()
                 payload: WidgetPayload | None = None
                 if self.settings.enable_widget_cache:
                     cached = self._widget_payload_cache.get(cache_key)
@@ -247,10 +250,21 @@ class ChatService:
                         payload = cached
                 if payload is None:
                     if ctx.deps.agent_id == "svg":
-                        payload = build_template_instance_widget_payload(
+                        normalized_template_id = (template_id or "").strip()
+                        if not normalized_template_id:
+                            raise ModelRetry(
+                                "show_widget requires template_id for the SVG agent. "
+                                "Pass the library relative path (for example sequence/sequence-4.svg) "
+                                "along with the populated working-clone widget_code."
+                            )
+                        template = self.svg_library_service.resolve_template(normalized_template_id)
+                        source_svg = self.svg_library_service.read_source_svg(template)
+                        payload = build_validated_template_widget_payload(
                             title=title,
                             loading_messages=loading_messages,
                             widget_code=widget_code,
+                            template_id=template.relative_path,
+                            source_svg=source_svg,
                             tool_config=ctx.deps.config.agent.tool,
                         )
                     else:
@@ -280,10 +294,25 @@ class ChatService:
                 )
 
                 repaired_payload: WidgetPayload | None = None
-                if (
-                    ctx.deps.agent_id != "svg"
-                    and exc.details.get("kind") == "visualizer_raw_svg"
-                ):
+                if ctx.deps.agent_id == "svg":
+                    try:
+                        repaired_payload = await asyncio.to_thread(
+                            self.svg_vision_repair_service.repair_from_validation_error,
+                            error=exc,
+                            tool_config=ctx.deps.config.agent.tool,
+                        )
+                    except Exception as repair_exc:  # pragma: no cover - defensive
+                        logger.warning(
+                            "svg-template-repair-failed",
+                            extra={
+                                "extra_data": {
+                                    "conversation_id": ctx.deps.conversation.id,
+                                    "title": title,
+                                    "detail": str(repair_exc),
+                                }
+                            },
+                        )
+                elif exc.details.get("kind") == "visualizer_raw_svg":
                     try:
                         repaired_payload = await asyncio.to_thread(
                             self.svg_vision_repair_service.repair_raw_visualizer_svg,
@@ -357,7 +386,7 @@ class ChatService:
         urls: list[str] = []
         seen: set[str] = set()
         for raw in URL_PATTERN.findall(message):
-            cleaned = raw.rstrip(".,;:!?)]}\"")
+            cleaned = raw.rstrip('.,;:!?)]}"')
             if cleaned and cleaned not in seen:
                 seen.add(cleaned)
                 urls.append(cleaned)
@@ -375,10 +404,7 @@ class ChatService:
         return normalized_host == normalized_rule
 
     def _is_allowed_url_host(self, host: str) -> bool:
-        return any(
-            self._domain_matches_rule(host, domain_rule)
-            for domain_rule in self._allowed_url_domains
-        )
+        return any(self._domain_matches_rule(host, domain_rule) for domain_rule in self._allowed_url_domains)
 
     def _extract_disallowed_url_hosts(self, message: str) -> list[str]:
         hosts: list[str] = []
@@ -414,9 +440,7 @@ class ChatService:
             f"{context_block}"
         )
 
-    def get_context_agent(
-        self, agent_bundle: AgentPromptBundle, model_name: str
-    ) -> Agent[AgentDependencies, str]:
+    def get_context_agent(self, agent_bundle: AgentPromptBundle, model_name: str) -> Agent[AgentDependencies, str]:
         cache_key = self._cache_key(agent_bundle.config.agent.id, model_name)
         cached_agent = self._context_agent_cache.get(cache_key)
         if cached_agent is not None:
@@ -503,7 +527,7 @@ class ChatService:
             model,
             output_type=VisualWidgetDraft,
             deps_type=AgentDependencies,
-            instructions=agent_bundle.visual_generation_prompt,
+            instructions=agent_bundle.widget_fallback_prompt,
             model_settings=model_settings,
             retries=2,
             output_retries=2,
@@ -519,9 +543,7 @@ class ChatService:
                 f"Latest learner request: {ctx.deps.user_message}",
             ]
             if ctx.deps.from_widget:
-                lines.append(
-                    f"Follow-up concerns widget '{ctx.deps.from_widget}' — align the visual with that."
-                )
+                lines.append(f"Follow-up concerns widget '{ctx.deps.from_widget}' — align the visual with that.")
             lines.extend(
                 [
                     "Produce exactly one high-quality visual payload.",
@@ -536,6 +558,26 @@ class ChatService:
 
         self._visual_agent_cache[cache_key] = built_agent
         return built_agent
+
+    async def sync_voice_turn(self, request: SyncVoiceRequest) -> str:
+        if request.conversation_id is not None:
+            conversation = await self.repository.get(request.conversation_id)
+            if conversation is None:
+                raise NotFoundAppError("Conversation", request.conversation_id)
+        else:
+            conversation = await self.repository.create_new()
+
+        history = self._load_history_with_budget(conversation) or []
+
+        if request.user_text:
+            history.append(ModelRequest(parts=[UserPromptPart(content=request.user_text)]))
+        if request.assistant_text:
+            history.append(ModelResponse(parts=[TextPart(content=request.assistant_text)]))
+
+        conversation.turn_count += 1
+        conversation.message_history_json = ModelMessagesTypeAdapter.dump_json(history).decode("utf-8")
+        await self.repository.save(conversation)
+        return conversation.id
 
     async def stream_chat(self, request: ChatRequest, *, client_id: str) -> AsyncIterator[str]:
         yield encode_sse(
@@ -565,10 +607,7 @@ class ChatService:
                     data={
                         "stage": "budgeting",
                         "label": "Budgeting tokens",
-                        "detail": (
-                            "Checking Gemini request "
-                            "limits and trimming history if needed."
-                        ),
+                        "detail": ("Checking Gemini request limits and trimming history if needed."),
                         "state": "active",
                     },
                 )
@@ -642,10 +681,7 @@ class ChatService:
                     data={
                         "stage": "connecting_model",
                         "label": "Connecting to Gemini",
-                        "detail": (
-                            "Preparing the PydanticAI agent and sending the "
-                            "request to Google Gen AI."
-                        ),
+                        "detail": ("Preparing the PydanticAI agent and sending the request to Google Gen AI."),
                         "state": "active",
                     },
                 )
@@ -709,9 +745,7 @@ class ChatService:
                                 assistant_started_emitted = True
 
                             if content:
-                                yield encode_sse(
-                                    StreamEvent(type="thinking_delta", data={"text": content})
-                                )
+                                yield encode_sse(StreamEvent(type="thinking_delta", data={"text": content}))
                             continue
 
                         if part_kind == "tool-call":
@@ -735,8 +769,7 @@ class ChatService:
                                             "stage": "rendering_visual",
                                             "label": "Rendering visual",
                                             "detail": (
-                                                "The agent asked for a visual and is "
-                                                "generating the widget code."
+                                                "The agent asked for a visual and is generating the widget code."
                                             ),
                                             "state": "active",
                                         },
@@ -788,13 +821,9 @@ class ChatService:
                             if not assistant_started_emitted:
                                 yield encode_sse(StreamEvent(type="assistant_started"))
                                 assistant_started_emitted = True
-                        yield encode_sse(
-                            StreamEvent(type="text_delta", data={"text": event.delta.content_delta})
-                        )
+                        yield encode_sse(StreamEvent(type="text_delta", data={"text": event.delta.content_delta}))
 
-                    if isinstance(event, PartDeltaEvent) and isinstance(
-                        event.delta, ThinkingPartDelta
-                    ):
+                    if isinstance(event, PartDeltaEvent) and isinstance(event.delta, ThinkingPartDelta):
                         if event.delta.content_delta:
                             if not assistant_started_emitted:
                                 yield encode_sse(
@@ -849,9 +878,7 @@ class ChatService:
                                 },
                             )
                         )
-                        final_history = ModelMessagesTypeAdapter.validate_json(
-                            event.result.all_messages_json()
-                        )
+                        final_history = ModelMessagesTypeAdapter.validate_json(event.result.all_messages_json())
 
                     for queued_event in event_sink.drain_nowait():
                         if queued_event.type == "widget_ready":
@@ -911,9 +938,7 @@ class ChatService:
 
             conversation.turn_count += 1
             if final_history is not None:
-                conversation.message_history_json = ModelMessagesTypeAdapter.dump_json(
-                    final_history
-                ).decode("utf-8")
+                conversation.message_history_json = ModelMessagesTypeAdapter.dump_json(final_history).decode("utf-8")
             await self.repository.save(conversation)
 
             visual_missing = wants_visual and not had_widget and yielded_stream_content
@@ -1041,12 +1066,11 @@ class ChatService:
 
         lowered_message = request.message.lower()
         if any(
-            phrase in lowered_message
-            for phrase in ("i still don't get", "i dont get", "confused", "not understanding")
+            phrase in lowered_message for phrase in ("i still don't get", "i dont get", "confused", "not understanding")
         ):
             conversation.learner_profile.struggling_with.append(request.message[:80])
 
-    def _follow_up_chips(self, had_widget: bool, agent_config: VisualAgentConfig) -> list[str]:
+    def _follow_up_chips(self, had_widget: bool, agent_config: AgentConfig) -> list[str]:
         if had_widget:
             return agent_config.agent.follow_up_chips.with_widget
         return agent_config.agent.follow_up_chips.without_widget
@@ -1066,11 +1090,7 @@ class ChatService:
             return None
 
         history = ModelMessagesTypeAdapter.validate_json(conversation.message_history_json)
-        while (
-            history
-            and self._estimate_history_tokens(history)
-            > self.settings.google_max_history_tokens
-        ):
+        while history and self._estimate_history_tokens(history) > self.settings.google_max_history_tokens:
             history = history[2:]
         return history or None
 
@@ -1093,7 +1113,7 @@ class ChatService:
         self,
         requested_model: str | None = None,
         *,
-        agent_config: VisualAgentConfig,
+        agent_config: AgentConfig,
     ) -> str:
         configured_model = requested_model or agent_config.agent.model
         return self.settings.resolve_google_model_name(configured_model)
@@ -1164,10 +1184,7 @@ class ChatService:
                 data={
                     "stage": "recovering_visual",
                     "label": "Recovering visual",
-                    "detail": (
-                        "The model answered without a widget. Running a visual-only "
-                        "recovery pass."
-                    ),
+                    "detail": ("The model answered without a widget. Running a visual-only recovery pass."),
                     "state": "active",
                 },
             )
@@ -1187,8 +1204,7 @@ class ChatService:
                             "stage": "recovery_model_switch",
                             "label": "Switching model",
                             "detail": (
-                                "The previous recovery attempt did not produce a widget. "
-                                f"Trying {candidate_model}."
+                                f"The previous recovery attempt did not produce a widget. Trying {candidate_model}."
                             ),
                             "state": "active",
                         },
@@ -1212,9 +1228,7 @@ class ChatService:
                                         data={
                                             "stage": "rendering_visual",
                                             "label": "Rendering visual",
-                                            "detail": (
-                                                "The recovery pass is generating the visual."
-                                            ),
+                                            "detail": ("The recovery pass is generating the visual."),
                                             "state": "active",
                                         },
                                     )
@@ -1251,9 +1265,7 @@ class ChatService:
                             )
 
                     if isinstance(event, AgentRunResultEvent):
-                        recovery_history = ModelMessagesTypeAdapter.validate_json(
-                            event.result.all_messages_json()
-                        )
+                        recovery_history = ModelMessagesTypeAdapter.validate_json(event.result.all_messages_json())
 
                     for queued_event in deps.event_sink.drain_nowait():
                         if queued_event.type == "widget_ready":
@@ -1279,10 +1291,7 @@ class ChatService:
                             data={
                                 "stage": "visual_recovery_failed",
                                 "label": "Visual recovery failed",
-                                "detail": (
-                                    "The model did not produce a valid widget during the "
-                                    "recovery pass."
-                                ),
+                                "detail": ("The model did not produce a valid widget during the recovery pass."),
                                 "state": "error",
                             },
                         )
@@ -1341,9 +1350,7 @@ class ChatService:
         client_id: str,
     ) -> list[StreamEvent]:
         agent_bundle = self.agent_registry.get(deps.agent_id)
-        estimated_tokens = estimate_tokens(request.message) + estimate_tokens(
-            agent_bundle.visual_generation_prompt
-        )
+        estimated_tokens = estimate_tokens(request.message) + estimate_tokens(agent_bundle.widget_fallback_prompt)
         self.rate_limiter.check_and_reserve(estimated_tokens, client_id=client_id)
 
         events = [
@@ -1513,9 +1520,7 @@ class ChatService:
                     data={
                         "stage": "fallback_visual_failed",
                         "label": "Fallback visual failed",
-                        "detail": (
-                            "The dedicated visual generator also failed to produce a valid widget."
-                        ),
+                        "detail": ("The dedicated visual generator also failed to produce a valid widget."),
                         "state": "error",
                     },
                 )
@@ -1532,11 +1537,7 @@ class ChatService:
     ) -> AsyncIterator[Any]:
         fallback_model_name = self._resolve_stream_fallback_model_name(model_name)
         candidate_models = [model_name]
-        if (
-            fallback_model_name
-            and fallback_model_name != model_name
-            and fallback_model_name not in candidate_models
-        ):
+        if fallback_model_name and fallback_model_name != model_name and fallback_model_name not in candidate_models:
             candidate_models.append(fallback_model_name)
 
         last_error: Exception | None = None
@@ -1579,9 +1580,7 @@ class ChatService:
 
                     last_error = exc
                     is_rate_limited = self._is_rate_limited_model_failure(exc)
-                    retry_after_seconds = (
-                        self._extract_retry_after_seconds(exc) if is_rate_limited else None
-                    )
+                    retry_after_seconds = self._extract_retry_after_seconds(exc) if is_rate_limited else None
                     has_more_attempts = attempt < self.settings.google_retry_attempts
                     # Gemini quota/rate-limit responses usually won't improve with immediate retries.
                     if is_rate_limited:
@@ -1620,16 +1619,8 @@ class ChatService:
                         continue
 
                     if has_fallback:
-                        switch_reason = (
-                            "rate limit"
-                            if is_rate_limited
-                            else "transient server error"
-                        )
-                        retry_note = (
-                            f" Retry after ~{retry_after_seconds}s."
-                            if retry_after_seconds is not None
-                            else ""
-                        )
+                        switch_reason = "rate limit" if is_rate_limited else "transient server error"
+                        retry_note = f" Retry after ~{retry_after_seconds}s." if retry_after_seconds is not None else ""
                         await deps.event_sink.emit(
                             "status",
                             {
@@ -1657,8 +1648,7 @@ class ChatService:
             raise RateLimitAppError(self._extract_retry_after_seconds(last_error)) from last_error
 
         raise ServiceUnavailableAppError(
-            "Gemini returned a transient server error while generating this answer. "
-            "Please retry the request."
+            "Gemini returned a transient server error while generating this answer. Please retry the request."
         ) from last_error
 
     def _is_transient_model_failure(self, exc: Exception) -> bool:

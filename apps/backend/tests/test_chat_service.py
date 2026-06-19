@@ -117,15 +117,15 @@ def test_request_needs_visual_detects_interactive_follow_ups() -> None:
     settings = Settings(google_api_key=SecretStr("test-key"))
     service = ChatService(settings=settings)
 
-    assert service._request_needs_visual('Make it interactive') is True
-    assert service._request_needs_visual('Turn this into a simulation') is True
+    assert service._request_needs_visual("Make it interactive") is True
+    assert service._request_needs_visual("Turn this into a simulation") is True
 
 
 def test_visual_fallback_context_removes_dense_vs_moe_svg_bias() -> None:
     source = inspect.getsource(ChatService.get_visual_agent)
 
     assert "Dense vs MoE style comparison prompts" not in source
-    assert "interactive controls, not static SVG side-by-sides" in source
+    assert "For comparisons: use HTML widgets when both concepts have tunable parameters" in source
 
 
 def test_recovery_prefers_stronger_fallback_model(monkeypatch) -> None:
@@ -133,10 +133,10 @@ def test_recovery_prefers_stronger_fallback_model(monkeypatch) -> None:
     monkeypatch.delenv("GEMINI_FALLBACK_MODEL_NAME", raising=False)
     monkeypatch.delenv("GOOGLE_VISUAL_RECOVERY_MODEL_NAME", raising=False)
     monkeypatch.delenv("GEMINI_VISUAL_RECOVERY_MODEL_NAME", raising=False)
-    settings = Settings(
-        _env_file=None,
+    settings = Settings.model_construct(
         google_api_key=SecretStr("test-key"),
         google_visual_recovery_model_name="gemini-3.1-pro-preview",
+        google_fallback_model_name=None,
     )
     service = ChatService(settings=settings)
 
@@ -147,18 +147,14 @@ def test_recovery_prefers_stronger_fallback_model(monkeypatch) -> None:
 
 
 def test_stream_fallback_uses_visual_recovery_when_generic_fallback_matches_primary() -> None:
-    settings = Settings(
-        _env_file=None,
+    settings = Settings.model_construct(
         google_api_key=SecretStr("test-key"),
         google_fallback_model_name="gemini-3-flash-preview",
         google_visual_recovery_model_name="gemini-3.1-pro-preview",
     )
     service = ChatService(settings=settings)
 
-    assert (
-        service._resolve_stream_fallback_model_name("gemini-3-flash-preview")
-        == "gemini-3.1-pro-preview"
-    )
+    assert service._resolve_stream_fallback_model_name("gemini-3-flash-preview") == "gemini-3.1-pro-preview"
 
 
 def test_extract_retry_after_from_retry_info() -> None:

@@ -3,6 +3,7 @@ from app.agent.widget_validator import (
     SUPPORTED_COLOR_RAMP_CLASSES,
     VISUALIZER_RAW_SVG_KIND,
     build_template_instance_widget_payload,
+    build_validated_template_widget_payload,
     build_widget_payload,
 )
 from app.core.errors import ValidationAppError
@@ -401,5 +402,55 @@ def test_svg_reports_multiple_violations_together() -> None:
         assert "HTML comments" in exc.message
         assert "width='100%'" in exc.message
         assert "dominant-baseline='central'" in exc.message
+    else:
+        raise AssertionError("Expected ValidationAppError")
+
+
+SOURCE_TEMPLATE_SVG = """
+<svg viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
+  <g id="layout-root">
+    <g id="slot-title">
+      <text id="title-text" x="60" y="80">Source title</text>
+    </g>
+    <g id="slot-body">
+      <text id="body-text" x="60" y="180">Source body</text>
+    </g>
+  </g>
+</svg>
+""".strip()
+
+
+def test_validated_template_widget_payload_accepts_safe_clone() -> None:
+    working_svg = SOURCE_TEMPLATE_SVG.replace("Source title", "Updated title")
+
+    payload = build_validated_template_widget_payload(
+        title="template_instance",
+        loading_messages=["Validating clone"],
+        widget_code=working_svg,
+        template_id="list/list.svg",
+        source_svg=SOURCE_TEMPLATE_SVG,
+        tool_config=build_tool_config(),
+    )
+
+    assert payload.kind == "svg"
+    assert "Updated title" in payload.widget_code
+
+
+def test_validated_template_widget_payload_rejects_id_drift() -> None:
+    working_svg = SOURCE_TEMPLATE_SVG.replace('id="slot-body"', 'id="slot-body-renamed"')
+
+    try:
+        build_validated_template_widget_payload(
+            title="template_instance",
+            loading_messages=["Validating clone"],
+            widget_code=working_svg,
+            template_id="list/list.svg",
+            source_svg=SOURCE_TEMPLATE_SVG,
+            tool_config=build_tool_config(),
+        )
+    except ValidationAppError as exc:
+        assert "template_relative_path" in exc.details
+        assert exc.details["source_svg"] == SOURCE_TEMPLATE_SVG
+        assert "group_id_missing" in str(exc.details.get("violations"))
     else:
         raise AssertionError("Expected ValidationAppError")

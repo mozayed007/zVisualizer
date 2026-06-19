@@ -30,6 +30,7 @@ class ToolConfig(BaseModel):
     name: str = "show_widget"
     max_loading_messages: int = 4
     max_widget_code_chars: int = 75000
+    template_id_required: bool = False
 
 
 class PromptContractConfig(BaseModel):
@@ -38,12 +39,9 @@ class PromptContractConfig(BaseModel):
     enforce_platform_requirements: bool = True
     never_treat_skill_docs_as_optional: bool = True
     visual_requests_require_tool_call: bool = True
-    target_quality_bar: str = (
-        "Match the polish, clarity, and beauty of the best claude.ai educational visuals."
-    )
+    target_quality_bar: str = "Match the polish, clarity, and beauty of the best claude.ai educational visuals."
     mandatory_skill_loading_rule: str = (
-        "Load all skill files before generating any visual output. "
-        "Each file is load-bearing."
+        "Load all skill files before generating any visual output. Each file is load-bearing."
     )
     mandatory_visual_rules: list[str] = Field(default_factory=list)
     pedagogical_rules: list[str] = Field(default_factory=list)
@@ -66,36 +64,37 @@ class AgentDefinition(BaseModel):
     source_docs: list[AgentDocReference]
 
 
-class VisualAgentConfig(BaseModel):
+class AgentConfig(BaseModel):
     agent: AgentDefinition
 
 
-def load_agent_config_from_path(path: Path) -> VisualAgentConfig:
+VisualAgentConfig = AgentConfig
+
+
+def load_agent_config_from_path(path: Path) -> AgentConfig:
     raw_data = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return VisualAgentConfig.model_validate(raw_data)
+    return AgentConfig.model_validate(raw_data)
 
 
 def resolve_source_documents(
-    config: VisualAgentConfig,
+    config: AgentConfig,
 ) -> list[tuple[AgentDocReference, Path, str]]:
     resolved: list[tuple[AgentDocReference, Path, str]] = []
     for document in config.agent.source_docs:
         absolute_path = PROJECT_ROOT / document.path
-        resolved.append(
-            (document, absolute_path, absolute_path.read_text(encoding="utf-8"))
-        )
+        resolved.append((document, absolute_path, absolute_path.read_text(encoding="utf-8")))
     return resolved
 
 
-def load_agent_configs_from_dir(path: Path) -> dict[str, VisualAgentConfig]:
-    configs: dict[str, VisualAgentConfig] = {}
+def load_agent_configs_from_dir(path: Path) -> dict[str, AgentConfig]:
+    configs: dict[str, AgentConfig] = {}
     for config_path in sorted(path.glob("agent.*.yaml")):
         config = load_agent_config_from_path(config_path)
         configs[config.agent.id] = config
     return configs
 
 
-def get_agent_config(settings: Settings | None = None, agent_id: str | None = None) -> VisualAgentConfig:
+def get_agent_config(settings: Settings | None = None, agent_id: str | None = None) -> AgentConfig:
     active_settings = settings or get_settings()
     configs = load_agent_configs_from_dir(active_settings.agent_config_dir)
     resolved_agent_id = agent_id or active_settings.default_agent_id

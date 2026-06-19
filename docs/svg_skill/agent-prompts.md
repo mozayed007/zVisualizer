@@ -5,6 +5,12 @@ part-of: svg-template-agent
 
 # Agent Prompts — System Prompt, Tool Definitions, and Workflow
 
+## Runtime mapping (visualizer-agent host)
+
+The production host registers one LLM tool for both agents: `show_widget`. For the SVG agent (`agent_id=svg`), every call must include `template_id` (library relative path, e.g. `sequence/sequence-4.svg`) plus `widget_code` (the populated working clone). The backend validates `widget_code` against the source template before render.
+
+The `populate_svg_template` schema below is the conceptual FILL-stage contract. At runtime, `show_widget(title, loading_messages, widget_code, template_id)` fulfills the same commit step.
+
 ## Tool schema: populate_svg_template
 
 This is the primary tool the agent calls when it has completed the FILL stage and is ready to commit the working copy state. It is the only mechanism through which populated SVG content is returned to the host application.

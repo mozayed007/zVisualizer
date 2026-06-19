@@ -11,6 +11,7 @@ from app.agent.svg_geometry_validator import (
     GeometryViolation,
     validate_svg_geometry,
 )
+from app.agent.svg_template_validator import validate_svg_template_instance
 from app.core.errors import ValidationAppError
 from app.models.chat import WidgetPayload
 
@@ -196,9 +197,7 @@ def build_template_instance_widget_payload(
 
     disallowed_patterns = ("<html", "<body", "<head", "<!doctype", "<script")
     if any(pattern in lowered_code for pattern in disallowed_patterns):
-        raise ValidationAppError(
-            "Template-instance SVG widget code cannot contain document wrappers or scripts."
-        )
+        raise ValidationAppError("Template-instance SVG widget code cannot contain document wrappers or scripts.")
 
     return WidgetPayload(
         title=normalized_title,
@@ -206,6 +205,40 @@ def build_template_instance_widget_payload(
         widget_code=normalized_code,
         kind="svg",
     )
+
+
+def build_validated_template_widget_payload(
+    *,
+    title: str,
+    loading_messages: list[str],
+    widget_code: str,
+    template_id: str,
+    source_svg: str,
+    tool_config: ToolConfig,
+) -> WidgetPayload:
+    payload = build_template_instance_widget_payload(
+        title=title,
+        loading_messages=loading_messages,
+        widget_code=widget_code,
+        tool_config=tool_config,
+    )
+    try:
+        validate_svg_template_instance(
+            source_svg=source_svg,
+            working_svg=payload.widget_code,
+        )
+    except ValidationAppError as exc:
+        exc.details.update(
+            {
+                "validator": "svg_template_validator",
+                "template_relative_path": template_id,
+                "widget_title": payload.title,
+                "source_svg": source_svg,
+                "working_svg": payload.widget_code,
+            }
+        )
+        raise
+    return payload
 
 
 def _normalize_widget_code(widget_code: str) -> str:
@@ -251,9 +284,7 @@ def _collect_widget_code_errors(
     else:
         errors.extend(_validate_svg_widget_code(widget_code))
         geometry_violations = [
-            violation
-            for violation in validate_svg_geometry(widget_code)
-            if violation.severity == "HIGH"
+            violation for violation in validate_svg_geometry(widget_code) if violation.severity == "HIGH"
         ]
         errors.extend(violation.formatted() for violation in geometry_violations)
 
@@ -269,9 +300,7 @@ def _validate_html_widget_code(widget_code: str) -> list[str]:
             "depends on intrinsic document height."
         )
     if "localstorage" in lowered or "sessionstorage" in lowered or "indexeddb" in lowered:
-        errors.append(
-            "HTML widget code cannot use localStorage, sessionStorage, or IndexedDB in the sandbox."
-        )
+        errors.append("HTML widget code cannot use localStorage, sessionStorage, or IndexedDB in the sandbox.")
     if "/*" in lowered:
         errors.append("HTML widget code cannot include CSS block comments.")
     if LINK_TAG_PATTERN.search(widget_code):
@@ -282,9 +311,7 @@ def _validate_html_widget_code(widget_code: str) -> list[str]:
 
     first_tag = re.match(r"\s*<([a-z0-9]+)", widget_code, flags=re.IGNORECASE)
     if first_tag is None or first_tag.group(1).lower() != "style":
-        errors.append(
-            "HTML widget code must start with a <style> block before visible content."
-        )
+        errors.append("HTML widget code must start with a <style> block before visible content.")
 
     script_matches = list(SCRIPT_TAG_PATTERN.finditer(widget_code))
     style_matches = list(STYLE_TAG_PATTERN.finditer(widget_code))
@@ -294,24 +321,18 @@ def _validate_html_widget_code(widget_code: str) -> list[str]:
     if script_matches:
         first_script_start = script_matches[0].start()
         if any(style.start() > first_script_start for style in style_matches):
-            errors.append(
-                "HTML widget code must place <style> before any <script> tags."
-            )
+            errors.append("HTML widget code must place <style> before any <script> tags.")
 
         content_before_scripts = widget_code[:first_script_start]
         content_without_styles = STYLE_BLOCK_PATTERN.sub("", content_before_scripts)
         if NON_STYLE_SCRIPT_TAG_PATTERN.search(content_without_styles) is None:
-            errors.append(
-                "HTML widget code must contain visible markup before scripts."
-            )
+            errors.append("HTML widget code must contain visible markup before scripts.")
 
         script_end_matches = list(SCRIPT_END_PATTERN.finditer(widget_code))
         if script_end_matches:
             after_last_script = widget_code[script_end_matches[-1].end() :]
             if after_last_script.strip():
-                errors.append(
-                    "HTML widget code must keep scripts at the end of the fragment."
-                )
+                errors.append("HTML widget code must keep scripts at the end of the fragment.")
 
     saw_inline_logic_script = False
     for attrs, script_body in SCRIPT_BLOCK_PATTERN.findall(widget_code):
@@ -325,17 +346,12 @@ def _validate_html_widget_code(widget_code: str) -> list[str]:
                     "Only cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, and unpkg.com are supported."
                 )
             if saw_inline_logic_script:
-                errors.append(
-                    "HTML widget code must keep CDN <script src=...> tags before inline logic scripts."
-                )
+                errors.append("HTML widget code must keep CDN <script src=...> tags before inline logic scripts.")
         else:
             saw_inline_logic_script = True
             for import_url in MODULE_IMPORT_URL_PATTERN.findall(script_body):
                 host = urlparse(import_url).hostname or ""
-                if (
-                    not import_url.lower().startswith("https://")
-                    or host not in ALLOWED_SCRIPT_CDN_HOSTS
-                ):
+                if not import_url.lower().startswith("https://") or host not in ALLOWED_SCRIPT_CDN_HOSTS:
                     errors.append(
                         f"HTML widget module import '{import_url}' is not allowed. "
                         "Use only esm.sh, cdnjs.cloudflare.com, cdn.jsdelivr.net, or unpkg.com."
@@ -349,30 +365,20 @@ def _validate_svg_widget_code(widget_code: str) -> list[str]:
     if not SVG_WIDTH_PATTERN.search(widget_code):
         errors.append("SVG widget code must include width='100%'.")
     if not SVG_VIEWBOX_PATTERN.search(lowered):
-        errors.append(
-            "SVG widget code must use viewBox='0 0 680 H' (with computed H)."
-        )
+        errors.append("SVG widget code must use viewBox='0 0 680 H' (with computed H).")
     if "<defs" not in lowered or 'id="arrow"' not in lowered.replace("'", '"'):
         errors.append("Raw SVG widgets must include a defs section with a marker that has id='arrow'.")
 
     text_tags = SVG_TEXT_TAG_PATTERN.findall(widget_code)
     if text_tags:
-        missing_baseline = [
-            tag for tag in text_tags if "dominant-baseline" not in tag.lower()
-        ]
+        missing_baseline = [tag for tag in text_tags if "dominant-baseline" not in tag.lower()]
         if missing_baseline:
-            errors.append(
-                "Every SVG <text> element must include dominant-baseline='central'."
-            )
+            errors.append("Every SVG <text> element must include dominant-baseline='central'.")
         missing_text_class = [
-            tag
-            for tag in text_tags
-            if re.search(r"class\s*=\s*['\"][^'\"]*\b(?:t|ts|th)\b", tag.lower()) is None
+            tag for tag in text_tags if re.search(r"class\s*=\s*['\"][^'\"]*\b(?:t|ts|th)\b", tag.lower()) is None
         ]
         if missing_text_class:
-            errors.append(
-                "Every SVG <text> element must use one of the injected text classes: t, ts, or th."
-            )
+            errors.append("Every SVG <text> element must use one of the injected text classes: t, ts, or th.")
 
     for path_tag in SVG_ARROW_PATH_PATTERN.findall(widget_code):
         lowered_path = path_tag.lower()

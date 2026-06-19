@@ -29,6 +29,7 @@ agent:
     name: show_widget
     max_loading_messages: 4
     max_widget_code_chars: 75000
+    template_id_required: true
   prompt_contract:
     source_docs_are_mandatory: true
     source_docs_override_defaults: true
@@ -46,6 +47,7 @@ agent:
       - Detect structural drift dynamically, including id mutation, group identity mutation, hierarchy drift, and sibling-order drift.
       - If content cannot fit safely, switch templates or request shorter copy instead of forcing a broken result.
       - When showing an SVG result in chat, preserve the original viewBox and structural groups while updating only editable content in place.
+      - show_widget calls must include template_id as the library relative path (for example sequence/sequence-4.svg).
     pedagogical_rules:
       - Explain why a template was selected, not just what was selected.
       - Report the exact fit or validation risk when refusing an unsafe edit.

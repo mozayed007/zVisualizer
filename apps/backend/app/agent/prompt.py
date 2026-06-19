@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 
 from app.agent.config import (
+    AgentConfig,
     AgentDocReference,
-    VisualAgentConfig,
     get_agent_config,
     resolve_source_documents,
 )
@@ -17,6 +17,7 @@ DOC_KEYWORDS = (
     "required",
     "rule",
     "show_widget",
+    "template_id",
     "sendprompt",
     "viewbox",
     "illustrative",
@@ -33,7 +34,16 @@ SYSTEM_DOC_LINES_PER_FILE = 12
 VISUAL_DOC_LINES_PER_FILE = 8
 EXCERPT_DOCS_HEADING = "Authoritative source-doc contract excerpts (load-bearing runtime context):"
 FULL_SKILL_DOCS_HEADING = (
-    "Authoritative source-doc contract (full skill docs enabled for docs/skill/*.md):"
+    "Authoritative source-doc contract (priority skill docs inlined in full; remaining docs use keyword excerpts):"
+)
+PRIORITY_SKILL_DOC_LABELS = frozenset(
+    {
+        "master_skill",
+        "visual_routing",
+        "template_routing",
+        "design_system",
+        "brand_system",
+    }
 )
 
 
@@ -46,12 +56,23 @@ def _is_full_skill_doc(path: str) -> bool:
     )
 
 
+def _should_inline_full_skill_doc(
+    doc_ref: AgentDocReference,
+    *,
+    load_full_skill_docs_on_session_start: bool,
+) -> bool:
+    if not load_full_skill_docs_on_session_start:
+        return False
+    if not _is_full_skill_doc(doc_ref.path):
+        return False
+    return doc_ref.label in PRIORITY_SKILL_DOC_LABELS
+
+
 def _normalize_doc_line(raw_line: str) -> str:
     line = raw_line.strip()
     if not line:
         return ""
 
-    # Source docs can include html and markdown formatting; runtime prompts need plain text.
     line = re.sub(r"<[^>]+>", "", line).strip()
     line = line.lstrip("-* ").strip()
     line = re.sub(r"^\d+\.\s*", "", line)
@@ -86,9 +107,7 @@ def _extract_doc_lines(content: str, *, max_lines: int) -> list[str]:
     if selected:
         return selected
 
-    fallback_lines = [
-        _normalize_doc_line(line) for line in content.splitlines() if _normalize_doc_line(line)
-    ]
+    fallback_lines = [_normalize_doc_line(line) for line in content.splitlines() if _normalize_doc_line(line)]
     return fallback_lines[:max_lines]
 
 
@@ -122,7 +141,7 @@ def _build_full_text_source_doc_section(
 
 
 def _build_source_doc_contract(
-    config: VisualAgentConfig,
+    config: AgentConfig,
     *,
     max_lines_per_file: int,
     load_full_skill_docs_on_session_start: bool = False,
@@ -132,7 +151,10 @@ def _build_source_doc_contract(
 
     for doc_ref, _, content in resolve_source_documents(config):
         section: str | None
-        if load_full_skill_docs_on_session_start and _is_full_skill_doc(doc_ref.path):
+        if _should_inline_full_skill_doc(
+            doc_ref,
+            load_full_skill_docs_on_session_start=load_full_skill_docs_on_session_start,
+        ):
             section = _build_full_text_source_doc_section(doc_ref, content)
             included_full_skill_docs = included_full_skill_docs or section is not None
         else:
@@ -149,15 +171,12 @@ def _build_source_doc_contract(
     return "\n\n".join([heading, *doc_sections])
 
 
-def build_system_prompt(
-    config: VisualAgentConfig,
-    *,
-    load_full_skill_docs_on_session_start: bool = False,
-) -> str:
+def _build_agent_identity_section(config: AgentConfig) -> list[str]:
     agent = config.agent
     prompt_contract = agent.prompt_contract
-    sections = [
-        f"You are {agent.name}, an expert visual learning companion.",
+    role_label = "an expert SVG template operator" if agent.id == "svg" else "an expert visual learning companion"
+    return [
+        f"You are {agent.name}, {role_label}.",
         f"Subject area: {agent.subject_area}.",
         f"Learner profile: {agent.learner_profile}.",
         f"Tone: {agent.tone}.",
@@ -166,21 +185,13 @@ def build_system_prompt(
         f"Quality bar: {prompt_contract.target_quality_bar}",
         "The host application, renderer, and validator enforce the platform contract.",
         "The configured source docs are runtime context for this turn and are not optional.",
-        "Distilled runtime routing rules (align with docs/claude-visuals-guide-v2.html):",
-        "- Use plain text when a visual would not materially improve understanding.",
-        "- Use SVG for reference maps, architecture, containment, and mechanism visuals "
-        "when there is no real parameter to vary.",
-        "- Use HTML widgets when the underlying system has a control the learner should vary "
-        "(step index, learning rate, frequency, etc.) or when stepping through stages "
-        "teaches better than one static frame.",
-        "- Use HTML widgets for comparisons where both concepts have tunable parameters "
-        "the learner should explore (learning rate, temperature, thresholds) — let the "
-        "learner vary and see both respond.",
-        "- Prefer illustrative diagrams over flowcharts for mechanism explanation; "
-        "avoid defaulting to box-and-arrow flowcharts for intuition questions.",
-        "- Interactivity is for pedagogy, not decoration — every slider, button, or step "
-        "must change something that matters to understanding.",
     ]
+
+
+def _build_yaml_contract_sections(config: AgentConfig) -> list[str]:
+    agent = config.agent
+    prompt_contract = agent.prompt_contract
+    sections: list[str] = []
 
     if prompt_contract.enforce_platform_requirements:
         sections.append(
@@ -195,47 +206,51 @@ def build_system_prompt(
         pedagogical_rules = [f"- {rule}" for rule in prompt_contract.pedagogical_rules]
         sections.append("\n".join(["Mandatory pedagogical rules:"] + pedagogical_rules))
 
-    sections.append(
-        _build_source_doc_contract(
-            config,
-            max_lines_per_file=SYSTEM_DOC_LINES_PER_FILE,
-            load_full_skill_docs_on_session_start=load_full_skill_docs_on_session_start,
-        )
-    )
+    return sections
 
+
+def _build_response_style_sections(config: AgentConfig) -> list[str]:
+    agent = config.agent
+    sections: list[str] = []
     if agent.response_style.ask_one_check_question:
         sections.append("Ask at most one comprehension check question per response.")
     if agent.response_style.prefer_visual_when_helpful:
         sections.append("Prefer a visual whenever it materially improves understanding.")
     if agent.response_style.never_stack_widgets_without_text:
         sections.append("Never place two visuals back-to-back without connecting prose.")
+    return sections
 
-    sections.append(
-        "When a visual is needed, call the show_widget tool with validated SVG or HTML widget code."
-    )
-    sections.append(
+
+def _build_visualizer_system_sections(config: AgentConfig) -> list[str]:
+    prompt_contract = config.agent.prompt_contract
+    sections = [
+        "Distilled runtime routing rules (align with docs/claude-visuals-guide-v2.html):",
+        "- Use plain text when a visual would not materially improve understanding.",
+        "- Use SVG for reference maps, architecture, containment, and mechanism visuals "
+        "when there is no real parameter to vary.",
+        "- Use HTML widgets when the underlying system has a control the learner should vary "
+        "(step index, learning rate, frequency, etc.) or when stepping through stages "
+        "teaches better than one static frame.",
+        "- Use HTML widgets for comparisons where both concepts have tunable parameters "
+        "the learner should explore (learning rate, temperature, thresholds). "
+        "Let the learner vary and see both respond.",
+        "- Prefer illustrative diagrams over flowcharts for mechanism explanation; "
+        "avoid defaulting to box-and-arrow flowcharts for intuition questions.",
+        "- Interactivity is for pedagogy, not decoration. Every slider, button, or step "
+        "must change something that matters to understanding.",
+        "When a visual is needed, call the show_widget tool with validated SVG or HTML widget code.",
         "show_widget title contract: the title must be short snake_case only, for example "
-        "'dense_vs_moe_architecture'. Never use spaces, punctuation, parentheses, or title case."
-    )
-    sections.append(
+        "'dense_vs_moe_architecture'. Never use spaces, punctuation, parentheses, or title case.",
         "Unless the learner explicitly asks for multiple visuals, prefer one strong final "
-        "show_widget call per turn rather than multiple separate widgets."
-    )
-    sections.append(
+        "show_widget call per turn rather than multiple separate widgets.",
         "Choose SVG or HTML using the decision logic from claude-visuals-guide-v2: "
         "static explanatory diagram → SVG; parameter-driven or staged process → HTML. "
-        "Never add JS chrome that does not encode a teaching-relevant variable."
-    )
-    sections.append(
+        "Never add JS chrome that does not encode a teaching-relevant variable.",
         "If you call show_widget, still finish the turn with one brief connecting "
-        "sentence after the tool call. Do not end the turn immediately after the tool."
-    )
-    sections.append(
+        "sentence after the tool call. Do not end the turn immediately after the tool.",
         "Widget output contract: "
         "SVG must use viewBox='0 0 680 H', include arrow defs, use dominant-baseline='central', "
-        "and keep connector paths fill='none'."
-    )
-    sections.append(
+        "and keep connector paths fill='none'.",
         "SVG text-fit contract (hard validated, violations block the render): "
         "for every <text> inside a <rect>, the estimated text bbox must fit inside the rect with "
         "~12px inner padding. Use these font metrics: th=14px weight 500 factor 0.58, "
@@ -243,85 +258,127 @@ def build_system_prompt(
         "rect.width MUST satisfy width >= longest_line_chars * font_size * factor * 1.08 + 24. "
         "rect.height MUST fit line_count * font_size * 1.35 with 16px vertical padding. "
         "If copy exceeds capacity, shorten it or wrap with <tspan x='...' dy='...'> — never "
-        "let text extend past its rect edges."
-    )
-    sections.append(
+        "let text extend past its rect edges.",
         "SVG word-count caps per text class: th <= 7 words and <= 40 chars per line, "
         "t <= 10 words and <= 60 chars per line, ts <= 12 words and <= 80 chars per line "
         "with at most 3 lines. Callouts and annotations must live in clear space or inside "
         "their own rect that does not overlap any sibling node by more than 2px. "
-        "Mentally compute every text bbox against its rect before emitting."
-    )
-    sections.append(
+        "Mentally compute every text bbox against its rect before emitting.",
         "SVG formatting contract: "
         "standalone SVG widget_code must start directly with <svg>. "
-        "Do not wrap a single SVG in a top-level <style> block."
-    )
-    sections.append(
+        "Do not wrap a single SVG in a top-level <style> block.",
         "Token contract: "
         "use only host-supported tokens and classes: c-{ramp}, --color-*, --font-*, "
         "--border-radius-*, and SVG shorthand vars --p/--s/--t/--bg2/--b. "
-        "Never invent variables like --c-purple-500."
-    )
-    sections.append(
+        "Never invent variables like --c-purple-500.",
         "Exact token examples: "
         "valid variables include --color-text-info, --color-background-secondary, "
         "--color-border-secondary, --font-sans, and --border-radius-md. "
         "Valid color-ramp classes are exactly c-purple, c-teal, c-amber, c-coral, "
         "c-blue, c-green, c-pink, c-gray, and c-red. "
-        "Never use palette-stop names like --color-blue-200 or classes like c-teal-200."
-    )
-    sections.append(
+        "Never use palette-stop names like --color-blue-200 or classes like c-teal-200.",
         "HTML widget contract: "
         "Emit a fragment only. Structure it in this order: style, visible content, CDN scripts, then logic script. "
-        "Do not emit DOCTYPE, html, head, body, or comments."
-    )
-    sections.append(
+        "Do not emit DOCTYPE, html, head, body, or comments.",
         "Detailed HTML rules: "
         "no localStorage, sessionStorage, IndexedDB, or position:fixed. "
         "Use only approved script CDNs: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, and unpkg.com. "
-        "Keep CDN script tags before inline logic. Do not emit <link> tags."
-    )
-    sections.append(
+        "Keep CDN script tags before inline logic. Do not emit <link> tags.",
         "Detailed HTML behavior rules: "
         "state lives in JS variables, learner-visible computed numbers must be rounded, "
         "charts/canvas need an explicit-height container, and any meaningful follow-up control "
-        "should call sendPrompt(...) with a specific learner-voiced question."
-    )
-    sections.append(
+        "should call sendPrompt(...) with a specific learner-voiced question.",
         "Detailed HTML animation rules: "
         "animations must teach, stay lightweight, prefer transform/opacity motion, and respect "
-        "prefers-reduced-motion."
-    )
-    sections.append(
+        "prefers-reduced-motion.",
         "Visual pedagogy contract: "
         "Keep the first visual focused and uncluttered, usually 3 to 6 major elements. "
-        "Use progressive disclosure and meaningful sendPrompt follow-ups where useful."
-    )
-    sections.append(
+        "Use progressive disclosure and meaningful sendPrompt follow-ups where useful.",
         "Color variety contract: Vary color ramps across different visuals in the same conversation. "
         "Available ramps: c-purple, c-teal, c-amber, c-coral, c-blue, c-green, c-pink, c-gray, c-red. "
-        "Avoid defaulting to the same purple-teal-amber sequence repeatedly — rotate ramps to keep visuals distinct."
-    )
+        "Avoid defaulting to the same purple-teal-amber sequence repeatedly. Rotate ramps to keep visuals distinct.",
+    ]
+
     if prompt_contract.visual_requests_require_tool_call:
-        sections.append(
-            "If the learner explicitly asks for a visual, diagram, architecture, flow, "
-            "or interactive explanation, you must call show_widget unless "
-            "the request is impossible to visualize faithfully."
+        sections.extend(
+            [
+                "If the learner explicitly asks for a visual, diagram, architecture, flow, "
+                "or interactive explanation, you must call show_widget unless "
+                "the request is impossible to visualize faithfully.",
+                "Do not write SVG or HTML code directly in your text response. "
+                "You MUST use the show_widget tool to provide visual content.",
+            ]
         )
-        sections.append(
-            "Do not write SVG or HTML code directly in your text response. "
-            "You MUST use the show_widget tool to provide visual content."
+
+    return sections
+
+
+def _build_svg_system_sections(config: AgentConfig) -> list[str]:
+    prompt_contract = config.agent.prompt_contract
+    sections = [
+        "SVG template operating model: DISCOVER → SELECT → CLONE → ANALYZE → MAP → FILL → VALIDATE → REPAIR → EXPORT.",
+        "The source template in the library is read-only. Work only on a cloned working instance.",
+        "Preserve every existing element id, every group id, nesting, sibling order, viewBox, "
+        "and defs references. Never regroup, flatten, or rename structural ids.",
+        "Measure text before placing it. Wrap before overflow. Validate after insertion. "
+        "Repair before export. If identity and fit conflict, preserve identity and escalate.",
+        "show_widget tool contract for this agent:",
+        "- title must be short snake_case",
+        "- loading_messages must contain 1 to 4 short learner-facing strings",
+        "- template_id is required on every call (library relative path, e.g. sequence/sequence-4.svg)",
+        "- widget_code must be the populated working clone as a raw <svg> fragment only",
+        "- never emit DOCTYPE, html, head, body, scripts, or comments",
+        "- never invent a new diagram from scratch when a library template fits",
+        "The host validates widget_code against the source template for structural drift before render.",
+        "If validation fails, shorten copy, switch templates, or report the exact violation. "
+        "Do not silently export a structurally broken clone.",
+        "When explaining a result, say why the template was selected and what validation risks remain.",
+    ]
+
+    if prompt_contract.visual_requests_require_tool_call:
+        sections.extend(
+            [
+                "If the learner asks for a populated SVG, diagram update, or template instance, "
+                "you must call show_widget with template_id unless the request is impossible.",
+                "Do not write raw SVG in prose. Use show_widget with template_id and widget_code.",
+            ]
         )
+
+    return sections
+
+
+def build_system_prompt(
+    config: AgentConfig,
+    *,
+    load_full_skill_docs_on_session_start: bool = False,
+) -> str:
+    sections = [
+        *_build_agent_identity_section(config),
+        *_build_yaml_contract_sections(config),
+        _build_source_doc_contract(
+            config,
+            max_lines_per_file=SYSTEM_DOC_LINES_PER_FILE,
+            load_full_skill_docs_on_session_start=load_full_skill_docs_on_session_start,
+        ),
+        *_build_response_style_sections(config),
+    ]
+
+    if config.agent.id == "svg":
+        sections.extend(_build_svg_system_sections(config))
+    else:
+        sections.extend(_build_visualizer_system_sections(config))
 
     return "\n\n".join(sections)
 
 
-def build_visual_generation_prompt(
-    config: VisualAgentConfig,
+def build_widget_fallback_prompt(
+    config: AgentConfig,
     *,
     load_full_skill_docs_on_session_start: bool = False,
 ) -> str:
+    if config.agent.id == "svg":
+        return "SVG agent fallback uses SvgLibraryService server-side. This prompt is unused for agent_id=svg."
+
     agent = config.agent
     prompt_contract = agent.prompt_contract
 
@@ -330,7 +387,7 @@ def build_visual_generation_prompt(
         "Your only job is to produce one valid widget payload for the learner request.",
         "Return structured widget data only. Do not return prose, markdown fences, or explanations.",
         "The widget must be learner-friendly, polished, dark-mode-safe, and immediately renderable.",
-        "This visual generator exists because the main conversational pass may fail to call the tool.",
+        "This visual generator exists because the main conversational pass failed to call the tool.",
         "You must still follow the same visual skill and platform contracts.",
         f"Mandatory skill loading rule: {prompt_contract.mandatory_skill_loading_rule}",
         f"Quality bar: {prompt_contract.target_quality_bar}",
@@ -341,8 +398,7 @@ def build_visual_generation_prompt(
         "- never include DOCTYPE, html, head, or body",
         "- never return prose outside widget payload fields",
         "- never emit raw widget code as chat text",
-        "- default to polished SVG for architectures; use HTML when a real parameter or "
-        "step sequence is load-bearing",
+        "- default to polished SVG for architectures; use HTML when a real parameter or step sequence is load-bearing",
         "- for comparisons of parameterized systems (optimizers, hyperparameter-sensitive "
         "algorithms), prefer HTML widgets with shared controls so learners can explore both side-by-side",
         "- prefer an overview visual with 3 to 6 major elements",
@@ -351,8 +407,7 @@ def build_visual_generation_prompt(
         "- for SVG, use dominant-baseline='central' on text and fill='none' on connector paths",
         "- for standalone SVG, start widget_code directly with <svg>; do not put a top-level <style> block before it",
         "- for SVG text, use the injected classes t, ts, or th",
-        "- every SVG <text> inside a <rect> must FIT the rect with ~12px inner padding; "
-        "violations are hard-rejected",
+        "- every SVG <text> inside a <rect> must FIT the rect with ~12px inner padding; violations are hard-rejected",
         "- rect.width must satisfy width >= longest_line_chars * font_size * weight_factor * 1.08 + 24 "
         "(th=14/0.58, t=14/0.52, ts=12/0.50)",
         "- rect.height must fit line_count * font_size * 1.35 with 16px vertical padding; "
@@ -363,8 +418,7 @@ def build_visual_generation_prompt(
         "node rectangles must not overlap each other",
         "- keep every rect and text bbox inside the 0..680 x 0..H viewBox (no edges past x=640 or below y=H-20)",
         "- for HTML, emit style first, then content, then CDN scripts, then logic",
-        "- for HTML, never emit <link> tags, localStorage/sessionStorage/IndexedDB, "
-        "or position:fixed",
+        "- for HTML, never emit <link> tags, localStorage/sessionStorage/IndexedDB, or position:fixed",
         "- for HTML, keep approved CDN scripts before inline logic and use only "
         "cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, or unpkg.com",
         "- for HTML, keep learner-visible computed numbers rounded and give canvas/chart containers explicit height",
@@ -393,21 +447,20 @@ def build_visual_generation_prompt(
     return "\n\n".join(sections)
 
 
+build_visual_generation_prompt = build_widget_fallback_prompt
+
+
 def get_compiled_system_prompt(settings: Settings | None = None) -> str:
     active_settings = settings or get_settings()
     return build_system_prompt(
         get_agent_config(active_settings),
-        load_full_skill_docs_on_session_start=(
-            active_settings.agent_load_full_skill_docs_on_session_start
-        ),
+        load_full_skill_docs_on_session_start=(active_settings.agent_load_full_skill_docs_on_session_start),
     )
 
 
 def get_compiled_visual_generation_prompt(settings: Settings | None = None) -> str:
     active_settings = settings or get_settings()
-    return build_visual_generation_prompt(
+    return build_widget_fallback_prompt(
         get_agent_config(active_settings),
-        load_full_skill_docs_on_session_start=(
-            active_settings.agent_load_full_skill_docs_on_session_start
-        ),
+        load_full_skill_docs_on_session_start=(active_settings.agent_load_full_skill_docs_on_session_start),
     )

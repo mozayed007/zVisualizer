@@ -1,7 +1,6 @@
 from app.agent.svg_template_validator import validate_svg_template_instance
 from app.core.errors import ValidationAppError
 
-
 SOURCE_SVG = """
 <svg viewBox="0 0 1200 675" xmlns="http://www.w3.org/2000/svg">
   <defs>
@@ -58,7 +57,11 @@ def test_rejects_hierarchy_drift_when_element_is_reparented() -> None:
         '<g id="slot-title">\n      <text id="title-text" x="60" y="80">Source title</text>\n'
         '      <text id="body-text" x="60" y="180">Source body</text>\n    </g>',
     ).replace(
-        '<g id="slot-body" clip-path="url(#clip-main)">\n      <text id="body-text" x="60" y="180">Source body</text>\n    </g>',
+        (
+            '<g id="slot-body" clip-path="url(#clip-main)">\n'
+            '      <text id="body-text" x="60" y="180">Source body</text>\n'
+            "    </g>"
+        ),
         '<g id="slot-body" clip-path="url(#clip-main)"></g>',
     )
 

@@ -4,16 +4,20 @@ from dataclasses import dataclass
 
 from pydantic import BaseModel
 
-from app.agent.config import VisualAgentConfig, load_agent_configs_from_dir
-from app.agent.prompt import build_system_prompt, build_visual_generation_prompt
+from app.agent.config import AgentConfig, load_agent_configs_from_dir
+from app.agent.prompt import build_system_prompt, build_widget_fallback_prompt
 from app.core.settings import Settings, get_settings
 
 
 @dataclass(frozen=True, slots=True)
 class AgentPromptBundle:
-    config: VisualAgentConfig
+    config: AgentConfig
     system_prompt: str
-    visual_generation_prompt: str
+    widget_fallback_prompt: str
+
+    @property
+    def visual_generation_prompt(self) -> str:
+        return self.widget_fallback_prompt
 
 
 class AgentSummary(BaseModel):
@@ -35,31 +39,23 @@ class AgentRegistry:
         self.settings = settings or get_settings()
         configs = load_agent_configs_from_dir(self.settings.agent_config_dir)
         if not configs:
-            raise ValueError(
-                f"No agent configs found in '{self.settings.agent_config_dir}'."
-            )
+            raise ValueError(f"No agent configs found in '{self.settings.agent_config_dir}'.")
         self._bundles = {
             agent_id: AgentPromptBundle(
                 config=config,
                 system_prompt=build_system_prompt(
                     config,
-                    load_full_skill_docs_on_session_start=(
-                        self.settings.agent_load_full_skill_docs_on_session_start
-                    ),
+                    load_full_skill_docs_on_session_start=(self.settings.agent_load_full_skill_docs_on_session_start),
                 ),
-                visual_generation_prompt=build_visual_generation_prompt(
+                widget_fallback_prompt=build_widget_fallback_prompt(
                     config,
-                    load_full_skill_docs_on_session_start=(
-                        self.settings.agent_load_full_skill_docs_on_session_start
-                    ),
+                    load_full_skill_docs_on_session_start=(self.settings.agent_load_full_skill_docs_on_session_start),
                 ),
             )
             for agent_id, config in configs.items()
         }
         if self.settings.default_agent_id not in self._bundles:
-            raise ValueError(
-                f"Default agent '{self.settings.default_agent_id}' is not configured."
-            )
+            raise ValueError(f"Default agent '{self.settings.default_agent_id}' is not configured.")
 
     def _resolve_agent_id(self, agent_id: str | None) -> str:
         if agent_id is None:
@@ -89,9 +85,7 @@ class AgentRegistry:
         bundle = self._bundles.get(resolved_agent_id)
         if bundle is None:
             available = ", ".join(sorted(self._bundles)) or "none"
-            raise ValueError(
-                f"Unknown agent_id '{resolved_agent_id}'. Available agents: {available}"
-            )
+            raise ValueError(f"Unknown agent_id '{resolved_agent_id}'. Available agents: {available}")
         return bundle
 
     def list_summaries(self) -> AgentCatalogResponse:
