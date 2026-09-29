@@ -10,16 +10,20 @@ interface ReasoningCardProps {
 }
 
 export function ReasoningCard({ text, isStreaming }: ReasoningCardProps) {
-  const [openAfterStream, setOpenAfterStream] = useState(false)
+  const [isOpenWhileStreaming, setIsOpenWhileStreaming] = useState(true)
+  const [isOpenAfterStream, setIsOpenAfterStream] = useState(false)
   const tokenEstimate = Math.max(1, Math.round(text.length / 4))
-  const open = isStreaming ? true : openAfterStream
+
+  const open = isStreaming ? isOpenWhileStreaming : isOpenAfterStream
 
   return (
     <Collapsible
       open={open}
       onOpenChange={(next) => {
-        if (!isStreaming) {
-          setOpenAfterStream(next)
+        if (isStreaming) {
+          setIsOpenWhileStreaming(next)
+        } else {
+          setIsOpenAfterStream(next)
         }
       }}
       className="rounded-xl border border-border/60 bg-muted/40"

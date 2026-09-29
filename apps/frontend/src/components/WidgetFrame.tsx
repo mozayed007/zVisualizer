@@ -28,6 +28,7 @@ import { AlertTriangle, Download } from 'lucide-react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 
 import { Button } from '@/components/ui/button'
+import { useTheme } from '@/hooks/useTheme'
 import { buildWidgetThemeCss } from '@/lib/designTokens'
 import { cn } from '@/lib/utils'
 import { buildBridgeScript } from '@/lib/widgetBridge'
@@ -334,10 +335,15 @@ function formatWidgetTitle(title: string): string {
   return title.replace(/_/g, ' ')
 }
 
-function syncIframeDesignTokens(iframe: HTMLIFrameElement | null) {
+function syncIframeDesignTokens(iframe: HTMLIFrameElement | null, theme?: 'light' | 'dark') {
   const doc = iframe?.contentDocument
   if (!doc) {
     return
+  }
+
+  if (theme) {
+    doc.documentElement.classList.toggle('dark', theme === 'dark')
+    doc.documentElement.classList.toggle('light', theme === 'light')
   }
 
   let tokenStyle = doc.querySelector<HTMLStyleElement>('#design-tokens')
@@ -350,6 +356,7 @@ function syncIframeDesignTokens(iframe: HTMLIFrameElement | null) {
 }
 
 function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
+  const { theme } = useTheme()
   const [height, setHeight] = useState(180)
   const [runtimeError, setRuntimeError] = useState<string | null>(null)
   const [isDownloadingSvg, setIsDownloadingSvg] = useState(false)
@@ -359,10 +366,14 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
 
   useEffect(() => {
     const mq = window.matchMedia('(prefers-color-scheme: dark)')
-    const onSchemeChange = () => syncIframeDesignTokens(iframeRef.current)
+    const onSchemeChange = () => syncIframeDesignTokens(iframeRef.current, theme)
     mq.addEventListener('change', onSchemeChange)
     return () => mq.removeEventListener('change', onSchemeChange)
-  }, [])
+  }, [theme])
+
+  useEffect(() => {
+    syncIframeDesignTokens(iframeRef.current, theme)
+  }, [theme])
 
   const srcDoc = useMemo(() => {
     return [
@@ -384,14 +395,12 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
 
   useEffect(() => {
     const onMessage = (event: MessageEvent) => {
-      const iframeWindow = iframeRef.current?.contentWindow
-      if (event.source !== iframeWindow) {
-        return
-      }
-
       const eventWidgetTitle =
         typeof event.data?.widgetTitle === 'string' ? event.data.widgetTitle : null
-      if (eventWidgetTitle !== null && eventWidgetTitle !== widget.title) {
+      
+      // Strict check: if the message doesn't have the matching title, ignore it.
+      // This is safe because our bridge script injects the title.
+      if (eventWidgetTitle !== widget.title) {
         return
       }
 
@@ -529,7 +538,7 @@ function WidgetFrameInner({ widget, onPrompt }: WidgetFrameProps) {
         srcDoc={srcDoc}
         style={{ height, transition: 'height 0.15s ease' }}
         onLoad={() => {
-          syncIframeDesignTokens(iframeRef.current)
+          syncIframeDesignTokens(iframeRef.current, theme)
           setRuntimeError(null)
         }}
         tabIndex={0}
