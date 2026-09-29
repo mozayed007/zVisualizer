@@ -5,7 +5,7 @@ description = "PydanticAI-powered visual learning companion backend"
 requires-python = ">=3.11"
 dependencies = [
   "fastapi>=0.116.1,<1.0.0",
-  "google-genai>=1.75.0,<2.0.0",
+  "google-genai>=1.70.0,<2.0.0",
   "httpx>=0.28.1,<1.0.0",
   "orjson>=3.11.4,<4.0.0",
   "pydantic-ai-slim[google]>=1.23.0,<2.0.0",

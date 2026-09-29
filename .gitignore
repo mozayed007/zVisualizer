@@ -188,7 +188,6 @@ authorized_keys
 *.class
 
 # Docker
-.dockerignore
 docker-compose.override.yml
 
 # Scripts logs and PID files (handled by scripts/.gitignore)
@@ -207,6 +206,7 @@ docker-compose.override.yml
 .mcp.json
 .zed/
 opencode.json
+mcps/
 .devin/
 .flaek/
 
