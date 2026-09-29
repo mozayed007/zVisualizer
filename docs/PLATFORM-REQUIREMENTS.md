@@ -192,28 +192,20 @@ iframe.setAttribute('csp', "script-src 'unsafe-inline' https://cdnjs.cloudflare.
 
 ## 3. Design token injection
 
-### 3.1 Dynamic CSS generation (detects user's color scheme)
+### 3.1 Static CSS with theme classes
+
+The design token stylesheet is static: light tokens live on `:root`, dark overrides on `:root.dark`, with an OS-scheme fallback under `@media (prefers-color-scheme: dark)`. Bake the initial theme class into the iframe root (`<html class="dark">`) and update existing frames over `postMessage`.
 
 ```javascript
-function getLearnerCSS(colorScheme) {
-  const dark = colorScheme === 'dark' ||
-    (colorScheme === 'auto' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-
-  // Full CSS from design-system.md — injected into every iframe
-  return generateFullDesignTokenCSS(dark);
-}
-
-// Update all iframes when user switches color scheme
+// Update all iframes when the color scheme changes.
+// Widget iframes are sandboxed without allow-same-origin, so they have an
+// opaque origin: iframe.contentDocument is null for the host, and theme
+// changes must travel over postMessage. The bridge script applies
+// `host_theme` by toggling the dark/light classes inside the frame.
 window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', e => {
+  const theme = e.matches ? 'dark' : 'light';
   document.querySelectorAll('.widget-frame').forEach(iframe => {
-    // Re-inject updated CSS into existing iframes
-    iframe.contentDocument?.querySelector('#design-tokens')?.remove();
-    const style = iframe.contentDocument?.createElement('style');
-    if (style) {
-      style.id = 'design-tokens';
-      style.textContent = getLearnerCSS(e.matches ? 'dark' : 'light');
-      iframe.contentDocument?.head?.appendChild(style);
-    }
+    iframe.contentWindow?.postMessage({ type: 'host_theme', theme }, '*');
   });
 });
 ```

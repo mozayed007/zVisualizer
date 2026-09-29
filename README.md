@@ -120,9 +120,9 @@ The `WidgetFrame` component (`apps/frontend/src/components/WidgetFrame.tsx`) is 
 | **Sandboxed Rendering** | Each widget renders in an isolated `<iframe>` with `sandbox="allow-scripts allow-popups-to-escape-sandbox"` |
 | **Auto-Resizing** | Uses `ResizeObserver` via postMessage to dynamically adjust iframe height based on content |
 | **Design Token Injection** | Injects CSS variables, typography, and color ramps automatically into the iframe |
-| **Bidirectional Communication** | `postMessage` bridge for: `prompt` (click-to-ask), `open_link` (secure navigation), `widget_error` (error handling) |
+| **Bidirectional Communication** | `postMessage` bridge: widgets emit `prompt` (click-to-ask), `open_link` (secure navigation), and `widget_error`; the host delivers the active theme via `host_theme` |
 | **CSP Enforcement** | Content Security Policy restricts script sources to approved CDNs only |
-| **SVG Export (v0.1)** | Download rendered SVGs with computed styles inlined for portability — preserves colors, markers, and CSS variable resolution |
+| **SVG Export** | Downloads the authored SVG with the full theme stylesheet inlined and the active theme pinned on the root element, so exported files keep their colors and stay valid standalone XML |
 
 #### Dependencies
 
@@ -361,6 +361,8 @@ Available ramps: `c-purple`, `c-teal`, `c-amber`, `c-coral`, `c-blue`, `c-green`
 
 Each ramp provides automatic light/dark mode adaptation via CSS custom properties.
 
+Widget iframes pick up the app theme through a `host_theme` `postMessage`: the initial theme class is baked into the iframe markup, and later toggles are applied inside the frame by the bridge script. Direct host access to the iframe document is not possible because the frame is sandboxed without `allow-same-origin`.
+
 ### 5. Widget-to-Chat Communication
 
 Widgets can communicate back to the chat interface:
@@ -375,6 +377,10 @@ These calls are caught by the `WidgetFrame` component and converted to:
 
 - **sendPrompt**: Opens a new user message in the chat with the provided text
 - **openLink**: Secure link opening (HTTPS only, with user confirmation)
+
+The host also sends one message in the other direction:
+
+- **host_theme**: Applies the app's light/dark theme inside the iframe; the bridge toggles the `dark`/`light` classes on the frame's root element
 
 ## Project Structure
 
@@ -397,7 +403,7 @@ visualizer-agent/
 │       ├── src/
 │       │   ├── components/   # Chat UI + WidgetFrame
 │       │   ├── hooks/        # useTheme, useLearnerProfile
-│       │   ├── lib/          # chatApi, designTokens, widgetBridge
+│       │   ├── lib/          # chatApi, designTokens, svgExport, widgetBridge
 │       │   ├── App.tsx       # Main chat interface
 │       │   └── index.css     # Global styles
 │       ├── Dockerfile
