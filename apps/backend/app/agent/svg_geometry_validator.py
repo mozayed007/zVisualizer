@@ -12,8 +12,8 @@ regex-only checks in :mod:`app.agent.widget_validator` could not catch:
     V-VIZ-BOX-WIDTH-FORMULA     node rect width is smaller than the docs-mandated
                                 `chars x font_size x weight x 1.08 + 24` budget
 
-The character-width model mirrors ``docs/visualizer_skill/svg-generation.md``
-and ``docs/svg_skill/text-fitting-and-alignment.md``. All dimensions are
+The character-width model mirrors ``skills/visualizer/svg-generation.md``
+and ``skills/svg/text-fitting-and-alignment.md``. All dimensions are
 estimated — the goal is to flag authoring mistakes, not to pixel-measure the
 final rendered output.
 """
@@ -29,7 +29,7 @@ from xml.etree import ElementTree
 Severity = Literal["HIGH", "MEDIUM"]
 
 # Font metrics derived from the host-injected SVG stylesheet. Keep these in sync
-# with ``docs/visualizer_skill/svg-generation.md``.
+# with ``skills/visualizer/svg-generation.md``.
 #   th -> 14px weight 500 (title / node label, primary color)
 #   t  -> 14px weight 400 (body label)
 #   ts -> 12px weight 400 (subtitle / annotation)

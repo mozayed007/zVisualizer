@@ -18,7 +18,7 @@
  * Canonical references:
  *   - docs/frontend-widget-integration.md  §4 (WidgetFrame / srcdoc assembly)
  *                                          §5 (injected CSS contract)
- *   - docs/visualizer_skill/design-system.md
+ *   - skills/visualizer/design-system.md
  *   - docs/backend-widget-endpoint.md      (SSE event + tool schema)
  *
  * If you need to change any contract surface, update the agent prompts in

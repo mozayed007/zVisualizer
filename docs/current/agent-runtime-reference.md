@@ -164,7 +164,7 @@ This compiled prompt includes:
 - design-token rules
 - pedagogy rules
 - `show_widget` usage instructions
-- source-doc excerpts by default, or full `docs/skill/*.md` bodies when `AGENT_LOAD_FULL_SKILL_DOCS_ON_SESSION_START=true`
+- source-doc excerpts by default, or full `skills/visualizer/*.md` bodies when `AGENT_LOAD_FULL_SKILL_DOCS_ON_SESSION_START=true`
 - Google-specific thinking config with `include_thoughts=true` so Gemini reasoning deltas can stream when the model supports them
 
 The compiled prompt is built from the active backend settings when `ChatService` starts, so prompt/config/env edits still require a process restart to reliably take effect.
@@ -173,12 +173,14 @@ The compiled prompt is built from the active backend settings when `ChatService`
 
 Configured source docs:
 
-- `docs/skill/SKILL.md`
-- `docs/skill/design-system.md`
-- `docs/skill/svg-generation.md`
-- `docs/skill/html-widgets.md`
-- `docs/skill/visual-routing.md`
-- `docs/skill/agent-prompts.md`
+- `skills/visualizer/SKILL.md`
+- `skills/visualizer/design-system.md`
+- `skills/visualizer/svg-generation.md`
+- `skills/visualizer/html-widgets.md`
+- `skills/visualizer/visual-routing.md`
+- `skills/visualizer/agent-prompts.md`
+- `skills/visualizer/text-fit-and-violations.md`
+- `skills/visualizer/imagination-patches-v2.md`
 - `docs/PLATFORM-REQUIREMENTS.md`
 
 Important nuance:

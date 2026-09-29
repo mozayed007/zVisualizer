@@ -54,21 +54,21 @@ agent:
       - Prefer one clean, brand-safe SVG result over multiple low-confidence alternatives.
       - If alignment and identity are in tension, preserve identity and escalate rather than improvising structure.
   source_docs:
-    - path: docs/svg_skill/SKILL.md
+    - path: skills/svg/SKILL.md
       label: master_skill
-    - path: docs/svg_skill/template-routing.md
+    - path: skills/svg/template-routing.md
       label: template_routing
-    - path: docs/svg_skill/svg-template-analysis.md
+    - path: skills/svg/svg-template-analysis.md
       label: svg_template_analysis
-    - path: docs/svg_skill/svg-instance-editing.md
+    - path: skills/svg/svg-instance-editing.md
       label: svg_instance_editing
-    - path: docs/svg_skill/text-fitting-and-alignment.md
+    - path: skills/svg/text-fitting-and-alignment.md
       label: text_fitting_and_alignment
-    - path: docs/svg_skill/violation-detection.md
+    - path: skills/svg/violation-detection.md
       label: violation_detection
-    - path: docs/svg_skill/brand-system.md
+    - path: skills/svg/brand-system.md
       label: brand_system
-    - path: docs/svg_skill/agent-prompts.md
+    - path: skills/svg/agent-prompts.md
       label: agent_prompts
     - path: docs/PLATFORM-REQUIREMENTS.md
       label: platform_requirements

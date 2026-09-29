@@ -70,19 +70,21 @@ agent:
       - If one encoding fails, switch visual encoding instead of repeating the same representation.
       - Never output raw widget code (SVG or HTML) as normal text or markdown. Always use the show_widget tool to render it.
   source_docs:
-    - path: docs/visualizer_skill/SKILL.md
+    - path: skills/visualizer/SKILL.md
       label: master_skill
-    - path: docs/visualizer_skill/design-system.md
+    - path: skills/visualizer/design-system.md
       label: design_system
-    - path: docs/visualizer_skill/svg-generation.md
+    - path: skills/visualizer/svg-generation.md
       label: svg_generation
-    - path: docs/visualizer_skill/html-widgets.md
+    - path: skills/visualizer/html-widgets.md
       label: html_widgets
-    - path: docs/visualizer_skill/visual-routing.md
+    - path: skills/visualizer/visual-routing.md
       label: visual_routing
-    - path: docs/visualizer_skill/agent-prompts.md
+    - path: skills/visualizer/agent-prompts.md
       label: agent_prompts
-    - path: docs/visualizer_skill/text-fit-and-violations.md
+    - path: skills/visualizer/text-fit-and-violations.md
       label: text_fit_and_violations
+    - path: skills/visualizer/imagination-patches-v2.md
+      label: imagination_patches
     - path: docs/PLATFORM-REQUIREMENTS.md
       label: platform_requirements

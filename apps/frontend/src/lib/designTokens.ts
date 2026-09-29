@@ -3,7 +3,7 @@
  *
  * The string returned by `buildWidgetThemeCss()` is the host half of the
  * contract documented in:
- *   - docs/visualizer_skill/design-system.md  (canonical spec)
+ *   - skills/visualizer/design-system.md  (canonical spec)
  *   - docs/frontend-widget-integration.md §5  (reference stylesheet)
  *
  * Generated `widget_code` from the visualizer agent references these exact

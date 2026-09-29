@@ -50,9 +50,8 @@ PRIORITY_SKILL_DOC_LABELS = frozenset(
 def _is_full_skill_doc(path: str) -> bool:
     normalized = path.replace("\\", "/").lstrip("./")
     return normalized.endswith(".md") and (
-        normalized.startswith("docs/skill/")
-        or normalized.startswith("docs/visualizer_skill/")
-        or normalized.startswith("docs/svg_skill/")
+        normalized.startswith("skills/svg/")
+        or normalized.startswith("skills/visualizer/")
     )
 
 

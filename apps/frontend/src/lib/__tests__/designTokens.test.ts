@@ -8,7 +8,7 @@ import { buildWidgetThemeCss } from '../designTokens'
  * disappear from `buildWidgetThemeCss()`, widgets will silently render wrong.
  *
  * Canonical sources of truth:
- *   - docs/visualizer_skill/design-system.md
+ *   - skills/visualizer/design-system.md
  *   - docs/frontend-widget-integration.md §5
  */
 

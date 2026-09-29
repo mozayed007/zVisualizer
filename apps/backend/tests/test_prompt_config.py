@@ -47,7 +47,7 @@ def test_system_prompt_uses_distilled_runtime_rules() -> None:
     assert "title must be short snake_case" in prompt
     assert "dense_vs_moe_architecture" in prompt
     assert "Authoritative source-doc contract excerpts" in prompt
-    assert "docs/visualizer_skill/design-system.md" in prompt
+    assert "skills/visualizer/design-system.md" in prompt
     assert FULL_SKILL_DOC_SNIPPET not in prompt
 
 
@@ -62,7 +62,7 @@ def test_visual_generation_prompt_contains_distilled_guide_rules() -> None:
     assert "for comparisons of parameterized systems" in prompt
     assert "avoid repeating the same purple-teal-amber trio" in prompt
     assert "Authoritative source-doc contract excerpts" in prompt
-    assert "docs/visualizer_skill/svg-generation.md" in prompt
+    assert "skills/visualizer/svg-generation.md" in prompt
 
 
 def test_compiled_system_prompt_respects_full_skill_doc_setting() -> None:
@@ -82,7 +82,7 @@ def test_compiled_system_prompt_respects_full_skill_doc_setting() -> None:
     assert FULL_SKILL_DOC_SNIPPET not in excerpt_prompt
     assert "Authoritative source-doc contract excerpts" in excerpt_prompt
     assert FULL_SKILL_DOC_SNIPPET in full_prompt
-    assert "master_skill (docs/visualizer_skill/SKILL.md) full text:" in full_prompt
+    assert "master_skill (skills/visualizer/SKILL.md) full text:" in full_prompt
     assert "priority skill docs inlined in full" in full_prompt
     assert PLATFORM_REQUIREMENTS_BODY_SNIPPET not in full_prompt
     assert "platform_requirements (docs/PLATFORM-REQUIREMENTS.md):" in full_prompt
@@ -97,12 +97,12 @@ def test_visual_generation_prompt_can_inline_priority_skill_docs_only() -> None:
     )
 
     assert FULL_SKILL_DOC_SNIPPET in prompt
-    assert "master_skill (docs/visualizer_skill/SKILL.md) full text:" in prompt
-    assert "design_system (docs/visualizer_skill/design-system.md) full text:" in prompt
+    assert "master_skill (skills/visualizer/SKILL.md) full text:" in prompt
+    assert "design_system (skills/visualizer/design-system.md) full text:" in prompt
     assert PLATFORM_REQUIREMENTS_BODY_SNIPPET not in prompt
     assert "platform_requirements (docs/PLATFORM-REQUIREMENTS.md):" in prompt
-    assert "svg_generation (docs/visualizer_skill/svg-generation.md):" in prompt
-    assert "svg_generation (docs/visualizer_skill/svg-generation.md) full text:" not in prompt
+    assert "svg_generation (skills/visualizer/svg-generation.md):" in prompt
+    assert "svg_generation (skills/visualizer/svg-generation.md) full text:" not in prompt
 
 
 def test_svg_agent_config_loads_source_docs() -> None:
@@ -111,8 +111,8 @@ def test_svg_agent_config_loads_source_docs() -> None:
     assert config.agent.id == "svg"
     assert config.agent.display_name == "SVG Agent"
     assert config.agent.tool.template_id_required is True
-    assert any(doc.path == "docs/svg_skill/SKILL.md" for doc in config.agent.source_docs)
-    assert any(doc.path == "docs/svg_skill/violation-detection.md" for doc in config.agent.source_docs)
+    assert any(doc.path == "skills/svg/SKILL.md" for doc in config.agent.source_docs)
+    assert any(doc.path == "skills/svg/violation-detection.md" for doc in config.agent.source_docs)
 
 
 def test_svg_system_prompt_excludes_visualizer_html_contract() -> None:

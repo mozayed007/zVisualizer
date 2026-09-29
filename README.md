@@ -263,12 +263,14 @@ agent:
     # ... extensive rules for visual generation
 
   source_docs:
-    - path: docs/skill/SKILL.md
-    - path: docs/skill/design-system.md
-    - path: docs/skill/svg-generation.md
-    - path: docs/skill/html-widgets.md
-    - path: docs/skill/visual-routing.md
-    - path: docs/skill/agent-prompts.md
+    - path: skills/visualizer/SKILL.md
+    - path: skills/visualizer/design-system.md
+    - path: skills/visualizer/svg-generation.md
+    - path: skills/visualizer/html-widgets.md
+    - path: skills/visualizer/visual-routing.md
+    - path: skills/visualizer/agent-prompts.md
+    - path: skills/visualizer/text-fit-and-violations.md
+    - path: skills/visualizer/imagination-patches-v2.md
     - path: docs/PLATFORM-REQUIREMENTS.md
 ```
 
@@ -276,13 +278,15 @@ agent:
 
 The agent loads skill documentation as runtime context:
 
-1. **SKILL.md** — Master skill contract and high-level behaviors
-2. **design-system.md** — Color ramps, typography, spacing tokens
-3. **svg-generation.md** — SVG structure, viewBox, arrow defs, text classes
-4. **html-widgets.md** — HTML widget patterns, CDN usage, interactivity rules
-5. **visual-routing.md** — When to use SVG vs HTML, routing decision logic
-6. **agent-prompts.md** — System prompt construction rules
-7. **PLATFORM-REQUIREMENTS.md** — Platform enforcement requirements
+1. **SKILL.md** - Master skill contract and high-level behaviors
+2. **design-system.md** - Color ramps, typography, spacing tokens
+3. **svg-generation.md** - SVG structure, viewBox, arrow defs, text classes
+4. **html-widgets.md** - HTML widget patterns, CDN usage, interactivity rules
+5. **visual-routing.md** - When to use SVG vs HTML, routing decision logic
+6. **agent-prompts.md** - System prompt construction rules
+7. **text-fit-and-violations.md** - Text-fit constraints and violation detection
+8. **imagination-patches-v2.md** - Cognitive-shape protocols for metaphor construction
+9. **PLATFORM-REQUIREMENTS.md** - Platform enforcement requirements
 
 #### Visual Routing Logic
 
@@ -379,46 +383,44 @@ visualizer-agent/
 ├── apps/
 │   ├── backend/              # FastAPI + PydanticAI backend
 │   │   ├── app/
-│   │   │   ├── agent/        # Agent config, prompts, widget validator
+│   │   │   ├── agent/        # Agent config, prompts, validators
 │   │   │   ├── core/         # Settings, errors, logging
 │   │   │   ├── models/       # Pydantic models (chat, widget)
 │   │   │   ├── repositories/ # Conversation persistence (SQLite)
 │   │   │   ├── services/     # Chat service, model catalog, rate limiting
 │   │   │   └── main.py       # FastAPI entry point
 │   │   ├── tests/            # Pytest test suite
-│   │   └── pyproject.toml    # Python dependencies
+│   │   ├── Dockerfile
+│   │   └── pyproject.toml    # Python dependencies (source of truth)
 │   │
 │   └── frontend/             # React + Vite frontend
 │       ├── src/
-│       │   ├── components/   # WidgetFrame.tsx
-│       │   ├── lib/          # chatApi.ts, designTokens.ts
-│       │   ├── types.ts      # TypeScript interfaces
+│       │   ├── components/   # Chat UI + WidgetFrame
+│       │   ├── hooks/        # useTheme, useLearnerProfile
+│       │   ├── lib/          # chatApi, designTokens, widgetBridge
 │       │   ├── App.tsx       # Main chat interface
-│       │   └── App.css       # Component styles
-│       ├── public/
+│       │   └── index.css     # Global styles
+│       ├── Dockerfile
 │       ├── index.html
 │       ├── package.json
 │       └── vite.config.ts
 │
-├── config/
-│   └── agent.visual.yaml     # Agent behavior configuration
-│
-├── data/                     # SQLite database (gitignored)
-│
-├── docs/
-│   ├── skill/                # Agent skill documentation
-│   │   ├── SKILL.md
-│   │   ├── design-system.md
-│   │   ├── svg-generation.md
-│   │   ├── html-widgets.md
-│   │   ├── visual-routing.md
-│   │   └── agent-prompts.md
+├── config/                   # Agent behavior configuration (visualizer + SVG)
+├── data/                     # Local runtime data: SQLite store + SVG template library (gitignored)
+├── docker/                   # Nginx config for the frontend container
+├── docs/                     # Human-facing documentation
+│   ├── current/              # Runtime reference docs
 │   ├── PLATFORM-REQUIREMENTS.md
-│   ├── SSE-STREAM-PROTOCOL.md
-│   └── current/              # Runtime reference docs
+│   └── SSE-STREAM-PROTOCOL.md
+├── skills/                   # Agent skill docs loaded at runtime
+│   ├── svg/
+│   └── visualizer/
+├── scripts/                  # start / stop / check dev scripts
 │
+├── .dockerignore
 ├── .env.example              # Environment template
-├── .gitignore                # Comprehensive ignore rules
+├── docker-compose.yml        # Production-style container stack
+├── LICENSE
 └── README.md                 # This file
 ```
 
