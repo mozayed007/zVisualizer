@@ -56,6 +56,17 @@ describe('buildBridgeScript — resize wiring', () => {
   })
 })
 
+describe('buildBridgeScript — host messages', () => {
+  it("applies theme changes from 'host_theme' messages", () => {
+    expect(script).toMatch(/type\s*!==\s*'host_theme'/)
+    expect(script).toMatch(/classList\.toggle\(\s*'dark'/)
+    expect(script).toMatch(/classList\.toggle\(\s*'light'/)
+  })
+  it('only accepts host messages from the parent window', () => {
+    expect(script).toMatch(/event\.source\s*!==\s*window\.parent/)
+  })
+})
+
 describe('buildBridgeScript — output shape', () => {
   it('is wrapped in a <script> tag', () => {
     expect(script.startsWith('<script>')).toBe(true)

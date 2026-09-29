@@ -9,6 +9,7 @@
  *   - window.sendPrompt(text)
  *   - window.openLink(url)
  *   - postMessage types: 'prompt' | 'iframe_resize' | 'open_link' | 'widget_error'
+ *   - host -> iframe message: 'host_theme' ({ theme: 'light' | 'dark' })
  *
  * A bun test (`__tests__/widgetBridge.test.ts`) guards this contract.
  */
@@ -50,6 +51,18 @@ export function buildBridgeScript(title: string): string {
   window.addEventListener('load', startResizeObserver, { once: true });
   window.addEventListener('error', function(event) {
     parent.postMessage({ type: 'widget_error', error: String(event.message || event.error || 'Unknown widget error'), widgetTitle: ${JSON.stringify(title)} }, '*');
+  });
+  window.addEventListener('message', function(event) {
+    if (event.source !== window.parent) {
+      return;
+    }
+    var data = event.data;
+    if (!data || data.type !== 'host_theme') {
+      return;
+    }
+    var theme = data.theme === 'light' ? 'light' : 'dark';
+    document.documentElement.classList.toggle('dark', theme === 'dark');
+    document.documentElement.classList.toggle('light', theme === 'light');
   });
   </scr` + `ipt>`
 }

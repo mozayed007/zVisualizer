@@ -258,10 +258,9 @@ function documentedSvgChildRamps(): string {
     return Object.entries(colorRamps)
       .map(([name, ramp]) => {
         const fill = mode === 'light' ? ramp[50] : ramp[800]
-        const stroke = mode === 'light' ? ramp[600] : ramp[600] // Wait, documented string uses 600 for stroke in both light and dark! Wait, let me check.
-        // Actually, looking at the previous hardcoded string:
-        // .c-purple>rect... {fill:#3C3489;stroke:#534AB7} -> 800 and 600
-        // Light: fill 50, stroke 600
+        // Matches docs/frontend-widget-integration.md §5: stroke is ramp[600]
+        // in both light and dark modes.
+        const stroke = ramp[600]
         const title = mode === 'light' ? ramp[800] : ramp[100]
         const subtitle = mode === 'light' ? ramp[600] : ramp[200]
         

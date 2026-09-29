@@ -355,7 +355,7 @@ function assembleSrcdoc(params: WidgetParams, frameId: string): string {
     };
 
     window.openLink = function(url) {
-      parent.postMessage({ type: 'open_link', url: url }, '*');
+      parent.postMessage({ type: 'open_link', url: url, widgetTitle: __widgetId }, '*');
     };
 
     // Report height immediately on load and whenever content changes
@@ -383,6 +383,16 @@ function assembleSrcdoc(params: WidgetParams, frameId: string): string {
         error: e.message,
         widgetTitle: __widgetId
       }, '*');
+    });
+
+    // Apply theme changes posted by the host (sandboxed frames cannot be
+    // styled from the outside; see §8)
+    window.addEventListener('message', function(event) {
+      if (event.source !== window.parent) return;
+      if (!event.data || event.data.type !== 'host_theme') return;
+      var theme = event.data.theme === 'light' ? 'light' : 'dark';
+      document.documentElement.classList.toggle('dark', theme === 'dark');
+      document.documentElement.classList.toggle('light', theme === 'light');
     });
   <\/script>`;
 
@@ -836,33 +846,33 @@ export function ChipRow({
 
 ## 8. Color-scheme synchronisation
 
-When the user switches OS dark/light mode, existing iframes must update:
+Widget iframes are sandboxed without `allow-same-origin`, so they have an opaque
+origin: `iframe.contentDocument` is `null` for the host and DOM access must not be
+attempted. Coordinate theme changes over `postMessage` instead.
+
+1. Bake the initial theme into the srcdoc HTML root: `<html class="dark">` or
+   `<html class="light">`.
+2. The bridge script applies `host_theme` messages by toggling the `dark` /
+   `light` classes on its own `documentElement`.
+3. When the host theme changes (or the OS scheme changes, when the host follows
+   it), notify every widget frame:
 
 ```typescript
-// colorSchemeSync.ts
-export function setupColorSchemeSync() {
-  window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
-    const freshCSS = getInjectedCSS();  // re-generate with new scheme
-
-    document.querySelectorAll<HTMLIFrameElement>('iframe[data-widget]').forEach(iframe => {
-      try {
-        const doc = iframe.contentDocument;
-        if (!doc) return;
-
-        let tokenStyle = doc.querySelector<HTMLStyleElement>('#design-tokens');
-        if (!tokenStyle) {
-          tokenStyle = doc.createElement('style');
-          tokenStyle.id = 'design-tokens';
-          doc.head?.appendChild(tokenStyle);
-        }
-        tokenStyle.textContent = freshCSS;
-      } catch {
-        // Cross-origin frames will throw — that's expected for external iframes
-      }
-    });
+// colorSchemeSync.ts (host side)
+export function syncWidgetTheme(theme: 'light' | 'dark') {
+  document.querySelectorAll<HTMLIFrameElement>('iframe[data-widget]').forEach(iframe => {
+    // '*' is required: a sandboxed frame's origin is "null", so a specific
+    // targetOrigin can never match it.
+    iframe.contentWindow?.postMessage({ type: 'host_theme', theme }, '*');
   });
 }
 ```
+
+The injected stylesheet defines light tokens on `:root`, dark overrides on
+`:root.dark`, and an OS-scheme fallback under `@media (prefers-color-scheme:
+dark)`, so toggling the class is all that is needed. Calling
+`iframe.contentDocument` returns `null` for widget frames, so never read widget
+state from the host DOM.
 
 ---
 
