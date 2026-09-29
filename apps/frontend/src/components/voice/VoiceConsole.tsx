@@ -353,6 +353,8 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
   const reconnectTimeoutRef = useRef<number | null>(null)
   const reconnectAttemptsRef = useRef(0)
   const openSessionRef = useRef<() => Promise<void>>(async () => {})
+  const transcriptsRef = useRef<TranscriptEntry[]>([])
+  const onTranscriptTurnCompleteRef = useRef(onTranscriptTurnComplete)
 
   const canUseVoice = useMemo(
     () => runtime?.ready === true && runtime.live.ready,
@@ -426,6 +428,18 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
       } catch {
         // Ignore device enumeration failures.
       }
+    },
+    [],
+  )
+
+  // Transcript updates go through a ref-backed helper so socket handlers can
+  // read the latest list synchronously without putting side effects inside a
+  // React state updater.
+  const applyTranscripts = useCallback(
+    (updater: (current: TranscriptEntry[]) => TranscriptEntry[]) => {
+      const next = updater(transcriptsRef.current)
+      transcriptsRef.current = next
+      setTranscripts(next)
     },
     [],
   )
@@ -807,9 +821,13 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
       return
     }
 
+    // Arm auto-reconnect before the first attempt so initial connect failures
+    // also retry with backoff, matching the status text shown to the user.
+    shouldAutoReconnectRef.current = true
     setConnectionState('connecting')
     setErrorMessage(null)
     setToolStatus(null)
+    transcriptsRef.current = []
     setTranscripts([])
     setStatusDetail('Connecting to Gemini Live…')
 
@@ -883,30 +901,27 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
           const text = typeof message.text === 'string' ? message.text : ''
           const final = message.final === true
           if (!text) return
-          setTranscripts((current) =>
-            updateTranscriptList(current, { role, text, final }),
-          )
+          applyTranscripts((current) => updateTranscriptList(current, { role, text, final }))
           return
         }
 
         if (messageType === 'turn.complete') {
-          setTranscripts((current) => {
-            const userEntry = current.findLast((e) => e.role === 'user' && !e.final)
-            const assistantEntry = current.findLast((e) => e.role === 'assistant' && !e.final)
-            
-            if (userEntry?.text || assistantEntry?.text) {
-              onTranscriptTurnComplete?.(userEntry?.text || '', assistantEntry?.text || '')
-            }
-
-            return finalizeLatestTranscript(finalizeLatestTranscript(current, 'assistant'), 'user')
-          })
+          const current = transcriptsRef.current
+          const userEntry = current.findLast((e) => e.role === 'user' && !e.final)
+          const assistantEntry = current.findLast((e) => e.role === 'assistant' && !e.final)
+          if (userEntry?.text || assistantEntry?.text) {
+            onTranscriptTurnCompleteRef.current?.(userEntry?.text || '', assistantEntry?.text || '')
+          }
+          applyTranscripts((list) =>
+            finalizeLatestTranscript(finalizeLatestTranscript(list, 'assistant'), 'user'),
+          )
           return
         }
 
         if (messageType === 'text.output' && typeof message.text === 'string') {
           const text = message.text
           if (!text) return
-          setTranscripts((current) =>
+          applyTranscripts((current) =>
             updateTranscriptList(current, { role: 'assistant', text, final: false }),
           )
           return
@@ -1031,6 +1046,7 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
     }
   }, [
     applySpeakerSelection,
+    applyTranscripts,
     canUseVoice,
     clearPendingSilenceFlush,
     clearReconnectTimeout,
@@ -1053,6 +1069,10 @@ export const VoiceConsole = forwardRef<VoiceConsoleRef, VoiceConsoleProps>(funct
   useEffect(() => {
     openSessionRef.current = openSession
   }, [openSession])
+
+  useEffect(() => {
+    onTranscriptTurnCompleteRef.current = onTranscriptTurnComplete
+  }, [onTranscriptTurnComplete])
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
