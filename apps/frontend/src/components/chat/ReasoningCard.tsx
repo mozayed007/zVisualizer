@@ -22,6 +22,9 @@ export function ReasoningCard({ text, isStreaming }: ReasoningCardProps) {
       onOpenChange={(next) => {
         if (isStreaming) {
           setIsOpenWhileStreaming(next)
+          // Carry the explicit choice past the end of the stream so a card the
+          // user re-opened keeps its state when streaming finishes.
+          setIsOpenAfterStream(next)
         } else {
           setIsOpenAfterStream(next)
         }

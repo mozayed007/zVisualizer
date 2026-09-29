@@ -28,13 +28,14 @@ class RateLimiter {
 
   async waitForAvailability(): Promise<void> {
     const now = Date.now()
-    const timeSinceLastRequest = now - this.lastRequest
-    if (timeSinceLastRequest < this.minInterval) {
-      await new Promise(resolve => 
-        setTimeout(resolve, this.minInterval - timeSinceLastRequest)
-      )
+    // Reserve the next slot up front so concurrent callers queue behind each
+    // other instead of all firing at once.
+    const scheduled = Math.max(now, this.lastRequest + this.minInterval)
+    this.lastRequest = scheduled
+    const wait = scheduled - now
+    if (wait > 0) {
+      await new Promise((resolve) => setTimeout(resolve, wait))
     }
-    this.lastRequest = Date.now()
   }
 }
 
@@ -114,9 +115,7 @@ export async function streamChat(
     headers,
     body: JSON.stringify(payload),
     signal: combinedSignal,
-  })
-
-  timeoutCleanup()
+  }).finally(timeoutCleanup)
 
   if (!response.ok || response.body === null) {
     const errorText = await response.text()
@@ -196,9 +195,7 @@ export async function syncVoiceTurn(
     headers,
     body: JSON.stringify(payload),
     signal: timeoutController.signal,
-  })
-  
-  timeoutCleanup()
+  }).finally(timeoutCleanup)
 
   if (!response.ok) {
     const errorData = (await response.json().catch(() => ({}))) as { detail?: string }
@@ -213,8 +210,7 @@ export async function getRuntimeStatus(): Promise<RuntimeStatus> {
   const { controller: timeoutController, cleanup: timeoutCleanup } = createTimeoutController(10000) // 10s timeout
   const response = await fetch(`${apiBaseUrl}/api/runtime`, {
     signal: timeoutController.signal,
-  })
-  timeoutCleanup()
+  }).finally(timeoutCleanup)
   if (!response.ok) {
     throw new Error(`Runtime check failed with ${response.status}`)
   }
@@ -226,8 +222,7 @@ export async function getAvailableModels(): Promise<ModelCatalogResponse> {
   const { controller: timeoutController, cleanup: timeoutCleanup } = createTimeoutController(10000) // 10s timeout
   const response = await fetch(`${apiBaseUrl}/api/models`, {
     signal: timeoutController.signal,
-  })
-  timeoutCleanup()
+  }).finally(timeoutCleanup)
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(errorText || `Model catalog request failed with ${response.status}`)
@@ -240,8 +235,7 @@ export async function getAvailableAgents(): Promise<AgentCatalogResponse> {
   const { controller: timeoutController, cleanup: timeoutCleanup } = createTimeoutController(10000) // 10s timeout
   const response = await fetch(`${apiBaseUrl}/api/agents`, {
     signal: timeoutController.signal,
-  })
-  timeoutCleanup()
+  }).finally(timeoutCleanup)
   if (!response.ok) {
     const errorText = await response.text()
     throw new Error(errorText || `Agent catalog request failed with ${response.status}`)

@@ -16,7 +16,7 @@ function readInitialTheme(): Theme {
   } catch {
     // ignore access errors
   }
-  return document.documentElement.classList.contains('dark') ? 'dark' : 'dark'
+  return document.documentElement.classList.contains('dark') ? 'dark' : 'light'
 }
 
 function applyTheme(theme: Theme): void {
