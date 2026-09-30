@@ -579,8 +579,8 @@ class ChatService:
         await self.repository.save(conversation)
         return conversation.id
 
-    async def stream_chat(self, request: ChatRequest, *, client_id: str) -> AsyncIterator[str]:
-        yield encode_sse(
+    async def stream_events(self, request: ChatRequest, *, client_id: str) -> AsyncIterator[StreamEvent]:
+        yield (
             StreamEvent(
                 type="status",
                 data={
@@ -601,7 +601,7 @@ class ChatService:
             active_agent_bundle = self.agent_registry.get(request.agent_id)
             self._prepare_conversation(conversation, request, agent_id=active_agent_bundle.config.agent.id)
 
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="status",
                     data={
@@ -631,7 +631,7 @@ class ChatService:
             )
             prompt_for_model = request.message
             if self._should_fetch_external_context(request.message):
-                yield encode_sse(
+                yield (
                     StreamEvent(
                         type="status",
                         data={
@@ -661,7 +661,7 @@ class ChatService:
             )
             self.rate_limiter.check_and_reserve(estimated_input_tokens, client_id=client_id)
 
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="conversation",
                     data={
@@ -675,7 +675,7 @@ class ChatService:
             assistant_started_emitted = False
             had_widget = False
 
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="status",
                     data={
@@ -702,7 +702,7 @@ class ChatService:
             final_history = history
             saw_final_result = False
             partial_completion_reason: str | None = None
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="status",
                     data={
@@ -730,7 +730,7 @@ class ChatService:
 
                             # Signal thinking started to clear "Queued" state
                             if not assistant_started_emitted:
-                                yield encode_sse(
+                                yield (
                                     StreamEvent(
                                         type="status",
                                         data={
@@ -741,11 +741,11 @@ class ChatService:
                                         },
                                     )
                                 )
-                                yield encode_sse(StreamEvent(type="assistant_started"))
+                                yield StreamEvent(type="assistant_started")
                                 assistant_started_emitted = True
 
                             if content:
-                                yield encode_sse(StreamEvent(type="thinking_delta", data={"text": content}))
+                                yield StreamEvent(type="thinking_delta", data={"text": content})
                             continue
 
                         if part_kind == "tool-call":
@@ -753,7 +753,7 @@ class ChatService:
                             if tool_name == "show_widget":
                                 yielded_stream_content = True
                                 tool_call_id = getattr(part, "tool_call_id", None)
-                                yield encode_sse(
+                                yield (
                                     StreamEvent(
                                         type="widget_loading",
                                         data={
@@ -762,7 +762,7 @@ class ChatService:
                                         },
                                     )
                                 )
-                                yield encode_sse(
+                                yield (
                                     StreamEvent(
                                         type="status",
                                         data={
@@ -781,7 +781,7 @@ class ChatService:
                         if not text_started:
                             text_started = True
                             yielded_stream_content = True
-                            yield encode_sse(
+                            yield (
                                 StreamEvent(
                                     type="status",
                                     data={
@@ -793,13 +793,13 @@ class ChatService:
                                 )
                             )
                             if not assistant_started_emitted:
-                                yield encode_sse(StreamEvent(type="assistant_started"))
+                                yield StreamEvent(type="assistant_started")
                                 assistant_started_emitted = True
 
                         part_content = getattr(part, "content", "")
                         if part_content:
                             yielded_stream_content = True
-                            yield encode_sse(StreamEvent(type="text_delta", data={"text": part_content}))
+                            yield StreamEvent(type="text_delta", data={"text": part_content})
 
                     if isinstance(event, PartDeltaEvent) and isinstance(event.delta, TextPartDelta):
                         if not event.delta.content_delta:
@@ -807,7 +807,7 @@ class ChatService:
                         if not text_started:
                             text_started = True
                             yielded_stream_content = True
-                            yield encode_sse(
+                            yield (
                                 StreamEvent(
                                     type="status",
                                     data={
@@ -819,14 +819,14 @@ class ChatService:
                                 )
                             )
                             if not assistant_started_emitted:
-                                yield encode_sse(StreamEvent(type="assistant_started"))
+                                yield StreamEvent(type="assistant_started")
                                 assistant_started_emitted = True
-                        yield encode_sse(StreamEvent(type="text_delta", data={"text": event.delta.content_delta}))
+                        yield StreamEvent(type="text_delta", data={"text": event.delta.content_delta})
 
                     if isinstance(event, PartDeltaEvent) and isinstance(event.delta, ThinkingPartDelta):
                         if event.delta.content_delta:
                             if not assistant_started_emitted:
-                                yield encode_sse(
+                                yield (
                                     StreamEvent(
                                         type="status",
                                         data={
@@ -837,10 +837,10 @@ class ChatService:
                                         },
                                     )
                                 )
-                                yield encode_sse(StreamEvent(type="assistant_started"))
+                                yield StreamEvent(type="assistant_started")
                                 assistant_started_emitted = True
 
-                            yield encode_sse(
+                            yield (
                                 StreamEvent(
                                     type="thinking_delta",
                                     data={"text": event.delta.content_delta},
@@ -850,7 +850,7 @@ class ChatService:
                     if isinstance(event, FunctionToolCallEvent):
                         tool_name = getattr(event.part, "tool_name", None)
                         if tool_name == "show_widget":
-                            yield encode_sse(
+                            yield (
                                 StreamEvent(
                                     type="status",
                                     data={
@@ -867,7 +867,7 @@ class ChatService:
 
                     if isinstance(event, AgentRunResultEvent):
                         saw_final_result = True
-                        yield encode_sse(
+                        yield (
                             StreamEvent(
                                 type="status",
                                 data={
@@ -885,14 +885,14 @@ class ChatService:
                             had_widget = True
                             yielded_stream_content = True
                             self._log_widget_ready_analytics(queued_event.data)
-                        yield encode_sse(queued_event)
+                        yield queued_event
             except UnexpectedModelBehavior as exc:
                 for queued_event in event_sink.drain_nowait():
                     if queued_event.type == "widget_ready":
                         had_widget = True
                         yielded_stream_content = True
                         self._log_widget_ready_analytics(queued_event.data)
-                    yield encode_sse(queued_event)
+                    yield queued_event
 
                 if had_widget:
                     partial_completion_reason = (
@@ -934,7 +934,7 @@ class ChatService:
                 for recovery_event in recovery_result.events:
                     if recovery_event.type == "widget_ready":
                         self._log_widget_ready_analytics(recovery_event.data)
-                    yield encode_sse(recovery_event)
+                    yield recovery_event
 
             conversation.turn_count += 1
             if final_history is not None:
@@ -943,7 +943,7 @@ class ChatService:
 
             visual_missing = wants_visual and not had_widget and yielded_stream_content
             if visual_missing:
-                yield encode_sse(
+                yield (
                     StreamEvent(
                         type="status",
                         data={
@@ -957,7 +957,7 @@ class ChatService:
                         },
                     )
                 )
-                yield encode_sse(
+                yield (
                     StreamEvent(
                         type="error",
                         data={
@@ -970,7 +970,7 @@ class ChatService:
                     )
                 )
             if (saw_final_result or had_widget or text_started) and not visual_missing:
-                yield encode_sse(
+                yield (
                     StreamEvent(
                         type="assistant_done",
                         data={
@@ -982,7 +982,7 @@ class ChatService:
                     )
                 )
             if partial_completion_reason is not None and not visual_missing:
-                yield encode_sse(
+                yield (
                     StreamEvent(
                         type="status",
                         data={
@@ -994,7 +994,7 @@ class ChatService:
                     )
                 )
             if not visual_missing:
-                yield encode_sse(
+                yield (
                     StreamEvent(
                         type="status",
                         data={
@@ -1005,9 +1005,9 @@ class ChatService:
                         },
                     )
                 )
-            yield encode_sse(StreamEvent(type="done"))
+            yield StreamEvent(type="done")
         except AppError as exc:
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="status",
                     data={
@@ -1022,9 +1022,9 @@ class ChatService:
                 "app-error",
                 extra={"extra_data": exc.to_dict()},
             )
-            yield encode_sse(StreamEvent(type="error", data=exc.to_dict()))
+            yield StreamEvent(type="error", data=exc.to_dict())
         except Exception as exc:
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="status",
                     data={
@@ -1036,7 +1036,7 @@ class ChatService:
                 )
             )
             logger.exception("chat-stream-failed")
-            yield encode_sse(
+            yield (
                 StreamEvent(
                     type="error",
                     data={
@@ -1045,6 +1045,10 @@ class ChatService:
                     },
                 )
             )
+
+    async def stream_chat(self, request: ChatRequest, *, client_id: str) -> AsyncIterator[str]:
+        async for event in self.stream_events(request, client_id=client_id):
+            yield encode_sse(event)
 
     def _prepare_conversation(
         self,
