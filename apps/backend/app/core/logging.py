@@ -5,7 +5,7 @@ import logging
 import re
 import sys
 from datetime import UTC, datetime
-from typing import Any
+from typing import Any, TextIO
 
 # Redact query-string secrets (e.g. Google ?key=, generic api_key / token / access_token /
 # authorization). Matches the value up to the next '&' or whitespace / quote boundary so we
@@ -65,8 +65,8 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(payload, ensure_ascii=False)
 
 
-def configure_logging() -> None:
-    handler = logging.StreamHandler(sys.stdout)
+def configure_logging(stream: TextIO | None = None) -> None:
+    handler = logging.StreamHandler(stream or sys.stdout)
     handler.setFormatter(JsonFormatter())
     handler.addFilter(SecretRedactionFilter())
 

@@ -16,6 +16,12 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+mcp = [
+  "mcp>=1.12,<2.0.0",
+]
+render = [
+  "playwright>=1.49",
+]
 dev = [
   "mypy>=1.19.0,<2.0.0",
   "pytest>=8.4,<10.0.0",
@@ -23,6 +29,9 @@ dev = [
   "ruff>=0.15.0,<1.0.0",
   "types-PyYAML>=6.0.12.20250915,<7.0.0",
 ]
+
+[project.scripts]
+visualizer-mcp = "app.mcp.__main__:main"
 
 [tool.ruff]
 line-length = 120
@@ -45,3 +54,6 @@ testpaths = ["tests"]
 [build-system]
 requires = ["setuptools>=80.9.0", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools.package-data]
+"app.mcp.render" = ["assets/*.css", "assets/*.json"]
