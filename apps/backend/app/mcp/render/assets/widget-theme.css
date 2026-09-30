@@ -1,0 +1,445 @@
+
+  @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500&family=JetBrains+Mono:wght@400;500&display=swap');
+
+  :root {
+    color-scheme: light dark;
+    --color-background-primary: #ffffff;
+    --color-background-secondary: #f4f2eb;
+    --color-background-tertiary: #eceae3;
+    --color-background-info: #e6f1fb;
+    --color-background-success: #eaf3de;
+    --color-background-warning: #faeeda;
+    --color-background-danger: #faece7;
+    --color-text-primary: #1a1918;
+    --color-text-secondary: #5a5855;
+    --color-text-tertiary: #9b9890;
+    --color-text-info: #185fa5;
+    --color-text-success: #27500a;
+    --color-text-warning: #633806;
+    --color-text-danger: #712b13;
+    --color-border-tertiary: rgba(0, 0, 0, 0.09);
+    --color-border-secondary: rgba(0, 0, 0, 0.14);
+    --color-border-primary: rgba(0, 0, 0, 0.4);
+    --color-border-info: #185fa5;
+    --color-border-success: #3b6d11;
+    --color-border-warning: #854f0b;
+    --color-border-danger: #993c1d;
+    --font-sans: 'Plus Jakarta Sans', system-ui, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+    --font-serif: Georgia, serif;
+    --border-radius-sm: 4px;
+    --border-radius-md: 8px;
+    --border-radius-lg: 12px;
+    --border-radius-xl: 16px;
+    --p: var(--color-text-primary);
+    --s: var(--color-text-secondary);
+    --t: var(--color-text-tertiary);
+    --bg2: var(--color-background-secondary);
+    --b: var(--color-border-tertiary);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not(.light) {
+      --color-background-primary: #141417;
+      --color-background-secondary: #1a1a1f;
+      --color-background-tertiary: #0d0d0f;
+      --color-background-info: rgba(55, 138, 221, 0.15);
+      --color-background-success: rgba(99, 153, 34, 0.15);
+      --color-background-warning: rgba(239, 159, 39, 0.15);
+      --color-background-danger: rgba(216, 90, 48, 0.15);
+      --color-text-primary: #e8e6df;
+      --color-text-secondary: #9b9890;
+      --color-text-tertiary: #5e5c58;
+      --color-text-info: #378add;
+      --color-text-success: #639922;
+      --color-text-warning: #ef9f27;
+      --color-text-danger: #d85a30;
+      --color-border-tertiary: rgba(255, 255, 255, 0.08);
+      --color-border-secondary: rgba(255, 255, 255, 0.14);
+      --color-border-primary: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  :root.dark {
+    --color-background-primary: #141417;
+    --color-background-secondary: #1a1a1f;
+    --color-background-tertiary: #0d0d0f;
+    --color-background-info: rgba(55, 138, 221, 0.15);
+    --color-background-success: rgba(99, 153, 34, 0.15);
+    --color-background-warning: rgba(239, 159, 39, 0.15);
+    --color-background-danger: rgba(216, 90, 48, 0.15);
+    --color-text-primary: #e8e6df;
+    --color-text-secondary: #9b9890;
+    --color-text-tertiary: #5e5c58;
+    --color-text-info: #378add;
+    --color-text-success: #639922;
+    --color-text-warning: #ef9f27;
+    --color-text-danger: #d85a30;
+    --color-border-tertiary: rgba(255, 255, 255, 0.08);
+    --color-border-secondary: rgba(255, 255, 255, 0.14);
+    --color-border-primary: rgba(255, 255, 255, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    width: 100%;
+    background: transparent;
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  svg, canvas, img, video {
+    width: 100%;
+    display: block;
+  }
+  svg, img, video {
+    height: auto;
+  }
+  canvas {
+    max-width: 100%;
+  }
+  svg {
+    font-family: var(--font-sans);
+  }
+  .box {
+    fill: var(--color-background-secondary);
+    stroke: var(--color-border-secondary);
+    stroke-width: 0.5;
+    rx: 12;
+  }
+  .th, .t, .ts {
+    dominant-baseline: central;
+    font-family: var(--font-sans);
+  }
+  .th { font-size: 14px; font-weight: 500; }
+  .t { font-size: 14px; font-weight: 400; }
+  .ts { font-size: 12px; font-weight: 400; }
+  .arr {
+    fill: none;
+    stroke-width: 1.5;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+  button, input, select {
+    font: inherit;
+  }
+  input[type='range'] {
+    width: 100%;
+    accent-color: var(--color-text-info);
+    cursor: pointer;
+  }
+  input[type='checkbox'] {
+    accent-color: var(--color-text-info);
+    cursor: pointer;
+  }
+  input[type='text'], input[type='number'], select {
+    height: 36px;
+    padding: 0 10px;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    background: var(--color-background-secondary);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 14px;
+  }
+  input[type='text']:focus, input[type='number']:focus {
+    outline: none;
+    border-color: var(--color-border-info);
+  }
+  select:focus {
+    outline: none;
+    border-color: var(--color-border-info);
+  }
+  a {
+    color: var(--color-text-info);
+  }
+  button {
+    background: transparent;
+    border: 1px solid var(--color-border-secondary);
+    border-radius: var(--border-radius-md);
+    color: var(--color-text-primary);
+    font-family: var(--font-sans);
+    font-size: 13px;
+    font-weight: 500;
+    padding: 7px 16px;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  button:hover {
+    background: var(--color-background-secondary);
+  }
+  button:active {
+    transform: scale(0.98);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation: none !important;
+      transition: none !important;
+      scroll-behavior: auto !important;
+    }
+  }
+  
+      .c-purple .box, .c-purple.box { fill: #EEEDFE; stroke: #534AB7; }
+      .c-purple .th, .c-purple.th, .c-purple .t, .c-purple.t { fill: #3C3489; }
+      .c-purple .ts, .c-purple.ts { fill: #534AB7; }
+      .c-purple .arr, .c-purple.arr { stroke: #534AB7; }
+      
+
+      .c-teal .box, .c-teal.box { fill: #E1F5EE; stroke: #0F6E56; }
+      .c-teal .th, .c-teal.th, .c-teal .t, .c-teal.t { fill: #085041; }
+      .c-teal .ts, .c-teal.ts { fill: #0F6E56; }
+      .c-teal .arr, .c-teal.arr { stroke: #0F6E56; }
+      
+
+      .c-amber .box, .c-amber.box { fill: #FAEEDA; stroke: #854F0B; }
+      .c-amber .th, .c-amber.th, .c-amber .t, .c-amber.t { fill: #633806; }
+      .c-amber .ts, .c-amber.ts { fill: #854F0B; }
+      .c-amber .arr, .c-amber.arr { stroke: #854F0B; }
+      
+
+      .c-coral .box, .c-coral.box { fill: #FAECE7; stroke: #993C1D; }
+      .c-coral .th, .c-coral.th, .c-coral .t, .c-coral.t { fill: #712B13; }
+      .c-coral .ts, .c-coral.ts { fill: #993C1D; }
+      .c-coral .arr, .c-coral.arr { stroke: #993C1D; }
+      
+
+      .c-blue .box, .c-blue.box { fill: #E6F1FB; stroke: #185FA5; }
+      .c-blue .th, .c-blue.th, .c-blue .t, .c-blue.t { fill: #0C447C; }
+      .c-blue .ts, .c-blue.ts { fill: #185FA5; }
+      .c-blue .arr, .c-blue.arr { stroke: #185FA5; }
+      
+
+      .c-green .box, .c-green.box { fill: #EAF3DE; stroke: #3B6D11; }
+      .c-green .th, .c-green.th, .c-green .t, .c-green.t { fill: #27500A; }
+      .c-green .ts, .c-green.ts { fill: #3B6D11; }
+      .c-green .arr, .c-green.arr { stroke: #3B6D11; }
+      
+
+      .c-pink .box, .c-pink.box { fill: #FBEAF0; stroke: #993556; }
+      .c-pink .th, .c-pink.th, .c-pink .t, .c-pink.t { fill: #72243E; }
+      .c-pink .ts, .c-pink.ts { fill: #993556; }
+      .c-pink .arr, .c-pink.arr { stroke: #993556; }
+      
+
+      .c-gray .box, .c-gray.box { fill: #F1EFE8; stroke: #5F5E5A; }
+      .c-gray .th, .c-gray.th, .c-gray .t, .c-gray.t { fill: #444441; }
+      .c-gray .ts, .c-gray.ts { fill: #5F5E5A; }
+      .c-gray .arr, .c-gray.arr { stroke: #5F5E5A; }
+      
+
+      .c-red .box, .c-red.box { fill: #FCEBEB; stroke: #A32D2D; }
+      .c-red .th, .c-red.th, .c-red .t, .c-red.t { fill: #791F1F; }
+      .c-red .ts, .c-red.ts { fill: #A32D2D; }
+      .c-red .arr, .c-red.arr { stroke: #A32D2D; }
+      
+  @media (prefers-color-scheme: dark) {
+    
+      :root:not(.light) .c-purple .box, :root:not(.light) .c-purple.box { fill: #3C3489; stroke: #AFA9EC; }
+      :root:not(.light) .c-purple .th, :root:not(.light) .c-purple.th, :root:not(.light) .c-purple .t, :root:not(.light) .c-purple.t { fill: #CECBF6; }
+      :root:not(.light) .c-purple .ts, :root:not(.light) .c-purple.ts { fill: #AFA9EC; }
+      :root:not(.light) .c-purple .arr, :root:not(.light) .c-purple.arr { stroke: #AFA9EC; }
+      
+
+      :root:not(.light) .c-teal .box, :root:not(.light) .c-teal.box { fill: #085041; stroke: #5DCAA5; }
+      :root:not(.light) .c-teal .th, :root:not(.light) .c-teal.th, :root:not(.light) .c-teal .t, :root:not(.light) .c-teal.t { fill: #9FE1CB; }
+      :root:not(.light) .c-teal .ts, :root:not(.light) .c-teal.ts { fill: #5DCAA5; }
+      :root:not(.light) .c-teal .arr, :root:not(.light) .c-teal.arr { stroke: #5DCAA5; }
+      
+
+      :root:not(.light) .c-amber .box, :root:not(.light) .c-amber.box { fill: #633806; stroke: #EF9F27; }
+      :root:not(.light) .c-amber .th, :root:not(.light) .c-amber.th, :root:not(.light) .c-amber .t, :root:not(.light) .c-amber.t { fill: #FAC775; }
+      :root:not(.light) .c-amber .ts, :root:not(.light) .c-amber.ts { fill: #EF9F27; }
+      :root:not(.light) .c-amber .arr, :root:not(.light) .c-amber.arr { stroke: #EF9F27; }
+      
+
+      :root:not(.light) .c-coral .box, :root:not(.light) .c-coral.box { fill: #712B13; stroke: #F0997B; }
+      :root:not(.light) .c-coral .th, :root:not(.light) .c-coral.th, :root:not(.light) .c-coral .t, :root:not(.light) .c-coral.t { fill: #F5C4B3; }
+      :root:not(.light) .c-coral .ts, :root:not(.light) .c-coral.ts { fill: #F0997B; }
+      :root:not(.light) .c-coral .arr, :root:not(.light) .c-coral.arr { stroke: #F0997B; }
+      
+
+      :root:not(.light) .c-blue .box, :root:not(.light) .c-blue.box { fill: #0C447C; stroke: #85B7EB; }
+      :root:not(.light) .c-blue .th, :root:not(.light) .c-blue.th, :root:not(.light) .c-blue .t, :root:not(.light) .c-blue.t { fill: #B5D4F4; }
+      :root:not(.light) .c-blue .ts, :root:not(.light) .c-blue.ts { fill: #85B7EB; }
+      :root:not(.light) .c-blue .arr, :root:not(.light) .c-blue.arr { stroke: #85B7EB; }
+      
+
+      :root:not(.light) .c-green .box, :root:not(.light) .c-green.box { fill: #27500A; stroke: #97C459; }
+      :root:not(.light) .c-green .th, :root:not(.light) .c-green.th, :root:not(.light) .c-green .t, :root:not(.light) .c-green.t { fill: #C0DD97; }
+      :root:not(.light) .c-green .ts, :root:not(.light) .c-green.ts { fill: #97C459; }
+      :root:not(.light) .c-green .arr, :root:not(.light) .c-green.arr { stroke: #97C459; }
+      
+
+      :root:not(.light) .c-pink .box, :root:not(.light) .c-pink.box { fill: #72243E; stroke: #ED93B1; }
+      :root:not(.light) .c-pink .th, :root:not(.light) .c-pink.th, :root:not(.light) .c-pink .t, :root:not(.light) .c-pink.t { fill: #F4C0D1; }
+      :root:not(.light) .c-pink .ts, :root:not(.light) .c-pink.ts { fill: #ED93B1; }
+      :root:not(.light) .c-pink .arr, :root:not(.light) .c-pink.arr { stroke: #ED93B1; }
+      
+
+      :root:not(.light) .c-gray .box, :root:not(.light) .c-gray.box { fill: #444441; stroke: #B4B2A9; }
+      :root:not(.light) .c-gray .th, :root:not(.light) .c-gray.th, :root:not(.light) .c-gray .t, :root:not(.light) .c-gray.t { fill: #D3D1C7; }
+      :root:not(.light) .c-gray .ts, :root:not(.light) .c-gray.ts { fill: #B4B2A9; }
+      :root:not(.light) .c-gray .arr, :root:not(.light) .c-gray.arr { stroke: #B4B2A9; }
+      
+
+      :root:not(.light) .c-red .box, :root:not(.light) .c-red.box { fill: #791F1F; stroke: #F09595; }
+      :root:not(.light) .c-red .th, :root:not(.light) .c-red.th, :root:not(.light) .c-red .t, :root:not(.light) .c-red.t { fill: #F7C1C1; }
+      :root:not(.light) .c-red .ts, :root:not(.light) .c-red.ts { fill: #F09595; }
+      :root:not(.light) .c-red .arr, :root:not(.light) .c-red.arr { stroke: #F09595; }
+      
+  }
+  
+      :root.dark .c-purple .box, :root.dark .c-purple.box { fill: #3C3489; stroke: #AFA9EC; }
+      :root.dark .c-purple .th, :root.dark .c-purple.th, :root.dark .c-purple .t, :root.dark .c-purple.t { fill: #CECBF6; }
+      :root.dark .c-purple .ts, :root.dark .c-purple.ts { fill: #AFA9EC; }
+      :root.dark .c-purple .arr, :root.dark .c-purple.arr { stroke: #AFA9EC; }
+      
+
+      :root.dark .c-teal .box, :root.dark .c-teal.box { fill: #085041; stroke: #5DCAA5; }
+      :root.dark .c-teal .th, :root.dark .c-teal.th, :root.dark .c-teal .t, :root.dark .c-teal.t { fill: #9FE1CB; }
+      :root.dark .c-teal .ts, :root.dark .c-teal.ts { fill: #5DCAA5; }
+      :root.dark .c-teal .arr, :root.dark .c-teal.arr { stroke: #5DCAA5; }
+      
+
+      :root.dark .c-amber .box, :root.dark .c-amber.box { fill: #633806; stroke: #EF9F27; }
+      :root.dark .c-amber .th, :root.dark .c-amber.th, :root.dark .c-amber .t, :root.dark .c-amber.t { fill: #FAC775; }
+      :root.dark .c-amber .ts, :root.dark .c-amber.ts { fill: #EF9F27; }
+      :root.dark .c-amber .arr, :root.dark .c-amber.arr { stroke: #EF9F27; }
+      
+
+      :root.dark .c-coral .box, :root.dark .c-coral.box { fill: #712B13; stroke: #F0997B; }
+      :root.dark .c-coral .th, :root.dark .c-coral.th, :root.dark .c-coral .t, :root.dark .c-coral.t { fill: #F5C4B3; }
+      :root.dark .c-coral .ts, :root.dark .c-coral.ts { fill: #F0997B; }
+      :root.dark .c-coral .arr, :root.dark .c-coral.arr { stroke: #F0997B; }
+      
+
+      :root.dark .c-blue .box, :root.dark .c-blue.box { fill: #0C447C; stroke: #85B7EB; }
+      :root.dark .c-blue .th, :root.dark .c-blue.th, :root.dark .c-blue .t, :root.dark .c-blue.t { fill: #B5D4F4; }
+      :root.dark .c-blue .ts, :root.dark .c-blue.ts { fill: #85B7EB; }
+      :root.dark .c-blue .arr, :root.dark .c-blue.arr { stroke: #85B7EB; }
+      
+
+      :root.dark .c-green .box, :root.dark .c-green.box { fill: #27500A; stroke: #97C459; }
+      :root.dark .c-green .th, :root.dark .c-green.th, :root.dark .c-green .t, :root.dark .c-green.t { fill: #C0DD97; }
+      :root.dark .c-green .ts, :root.dark .c-green.ts { fill: #97C459; }
+      :root.dark .c-green .arr, :root.dark .c-green.arr { stroke: #97C459; }
+      
+
+      :root.dark .c-pink .box, :root.dark .c-pink.box { fill: #72243E; stroke: #ED93B1; }
+      :root.dark .c-pink .th, :root.dark .c-pink.th, :root.dark .c-pink .t, :root.dark .c-pink.t { fill: #F4C0D1; }
+      :root.dark .c-pink .ts, :root.dark .c-pink.ts { fill: #ED93B1; }
+      :root.dark .c-pink .arr, :root.dark .c-pink.arr { stroke: #ED93B1; }
+      
+
+      :root.dark .c-gray .box, :root.dark .c-gray.box { fill: #444441; stroke: #B4B2A9; }
+      :root.dark .c-gray .th, :root.dark .c-gray.th, :root.dark .c-gray .t, :root.dark .c-gray.t { fill: #D3D1C7; }
+      :root.dark .c-gray .ts, :root.dark .c-gray.ts { fill: #B4B2A9; }
+      :root.dark .c-gray .arr, :root.dark .c-gray.arr { stroke: #B4B2A9; }
+      
+
+      :root.dark .c-red .box, :root.dark .c-red.box { fill: #791F1F; stroke: #F09595; }
+      :root.dark .c-red .th, :root.dark .c-red.th, :root.dark .c-red .t, :root.dark .c-red.t { fill: #F7C1C1; }
+      :root.dark .c-red .ts, :root.dark .c-red.ts { fill: #F09595; }
+      :root.dark .c-red .arr, :root.dark .c-red.arr { stroke: #F09595; }
+      
+
+  /* docs/frontend-widget-integration.md — direct-child SVG ramps (skill output) */
+  
+
+.c-purple>rect,.c-purple>circle,.c-purple>ellipse{fill:#EEEDFE;stroke:#534AB7}
+.c-purple>text.t,.c-purple>text.th{fill:#3C3489}
+.c-purple>text.ts{fill:#534AB7}
+.c-teal>rect,.c-teal>circle,.c-teal>ellipse{fill:#E1F5EE;stroke:#0F6E56}
+.c-teal>text.t,.c-teal>text.th{fill:#085041}
+.c-teal>text.ts{fill:#0F6E56}
+.c-amber>rect,.c-amber>circle,.c-amber>ellipse{fill:#FAEEDA;stroke:#854F0B}
+.c-amber>text.t,.c-amber>text.th{fill:#633806}
+.c-amber>text.ts{fill:#854F0B}
+.c-coral>rect,.c-coral>circle,.c-coral>ellipse{fill:#FAECE7;stroke:#993C1D}
+.c-coral>text.t,.c-coral>text.th{fill:#712B13}
+.c-coral>text.ts{fill:#993C1D}
+.c-blue>rect,.c-blue>circle,.c-blue>ellipse{fill:#E6F1FB;stroke:#185FA5}
+.c-blue>text.t,.c-blue>text.th{fill:#0C447C}
+.c-blue>text.ts{fill:#185FA5}
+.c-green>rect,.c-green>circle,.c-green>ellipse{fill:#EAF3DE;stroke:#3B6D11}
+.c-green>text.t,.c-green>text.th{fill:#27500A}
+.c-green>text.ts{fill:#3B6D11}
+.c-pink>rect,.c-pink>circle,.c-pink>ellipse{fill:#FBEAF0;stroke:#993556}
+.c-pink>text.t,.c-pink>text.th{fill:#72243E}
+.c-pink>text.ts{fill:#993556}
+.c-gray>rect,.c-gray>circle,.c-gray>ellipse{fill:#F1EFE8;stroke:#5F5E5A}
+.c-gray>text.t,.c-gray>text.th{fill:#444441}
+.c-gray>text.ts{fill:#5F5E5A}
+.c-red>rect,.c-red>circle,.c-red>ellipse{fill:#FCEBEB;stroke:#A32D2D}
+.c-red>text.t,.c-red>text.th{fill:#791F1F}
+.c-red>text.ts{fill:#A32D2D}
+@media(prefers-color-scheme:dark){
+
+:root:not(.light) .c-purple>rect,:root:not(.light) .c-purple>circle,:root:not(.light) .c-purple>ellipse{fill:#3C3489;stroke:#534AB7}
+:root:not(.light) .c-purple>text.t,:root:not(.light) .c-purple>text.th{fill:#CECBF6}
+:root:not(.light) .c-purple>text.ts{fill:#AFA9EC}
+:root:not(.light) .c-teal>rect,:root:not(.light) .c-teal>circle,:root:not(.light) .c-teal>ellipse{fill:#085041;stroke:#0F6E56}
+:root:not(.light) .c-teal>text.t,:root:not(.light) .c-teal>text.th{fill:#9FE1CB}
+:root:not(.light) .c-teal>text.ts{fill:#5DCAA5}
+:root:not(.light) .c-amber>rect,:root:not(.light) .c-amber>circle,:root:not(.light) .c-amber>ellipse{fill:#633806;stroke:#854F0B}
+:root:not(.light) .c-amber>text.t,:root:not(.light) .c-amber>text.th{fill:#FAC775}
+:root:not(.light) .c-amber>text.ts{fill:#EF9F27}
+:root:not(.light) .c-coral>rect,:root:not(.light) .c-coral>circle,:root:not(.light) .c-coral>ellipse{fill:#712B13;stroke:#993C1D}
+:root:not(.light) .c-coral>text.t,:root:not(.light) .c-coral>text.th{fill:#F5C4B3}
+:root:not(.light) .c-coral>text.ts{fill:#F0997B}
+:root:not(.light) .c-blue>rect,:root:not(.light) .c-blue>circle,:root:not(.light) .c-blue>ellipse{fill:#0C447C;stroke:#185FA5}
+:root:not(.light) .c-blue>text.t,:root:not(.light) .c-blue>text.th{fill:#B5D4F4}
+:root:not(.light) .c-blue>text.ts{fill:#85B7EB}
+:root:not(.light) .c-green>rect,:root:not(.light) .c-green>circle,:root:not(.light) .c-green>ellipse{fill:#27500A;stroke:#3B6D11}
+:root:not(.light) .c-green>text.t,:root:not(.light) .c-green>text.th{fill:#C0DD97}
+:root:not(.light) .c-green>text.ts{fill:#97C459}
+:root:not(.light) .c-pink>rect,:root:not(.light) .c-pink>circle,:root:not(.light) .c-pink>ellipse{fill:#72243E;stroke:#993556}
+:root:not(.light) .c-pink>text.t,:root:not(.light) .c-pink>text.th{fill:#F4C0D1}
+:root:not(.light) .c-pink>text.ts{fill:#ED93B1}
+:root:not(.light) .c-gray>rect,:root:not(.light) .c-gray>circle,:root:not(.light) .c-gray>ellipse{fill:#444441;stroke:#5F5E5A}
+:root:not(.light) .c-gray>text.t,:root:not(.light) .c-gray>text.th{fill:#D3D1C7}
+:root:not(.light) .c-gray>text.ts{fill:#B4B2A9}
+:root:not(.light) .c-red>rect,:root:not(.light) .c-red>circle,:root:not(.light) .c-red>ellipse{fill:#791F1F;stroke:#A32D2D}
+:root:not(.light) .c-red>text.t,:root:not(.light) .c-red>text.th{fill:#F7C1C1}
+:root:not(.light) .c-red>text.ts{fill:#F09595}
+}
+
+:root.dark .c-purple>rect,:root.dark .c-purple>circle,:root.dark .c-purple>ellipse{fill:#3C3489;stroke:#534AB7}
+:root.dark .c-purple>text.t,:root.dark .c-purple>text.th{fill:#CECBF6}
+:root.dark .c-purple>text.ts{fill:#AFA9EC}
+:root.dark .c-teal>rect,:root.dark .c-teal>circle,:root.dark .c-teal>ellipse{fill:#085041;stroke:#0F6E56}
+:root.dark .c-teal>text.t,:root.dark .c-teal>text.th{fill:#9FE1CB}
+:root.dark .c-teal>text.ts{fill:#5DCAA5}
+:root.dark .c-amber>rect,:root.dark .c-amber>circle,:root.dark .c-amber>ellipse{fill:#633806;stroke:#854F0B}
+:root.dark .c-amber>text.t,:root.dark .c-amber>text.th{fill:#FAC775}
+:root.dark .c-amber>text.ts{fill:#EF9F27}
+:root.dark .c-coral>rect,:root.dark .c-coral>circle,:root.dark .c-coral>ellipse{fill:#712B13;stroke:#993C1D}
+:root.dark .c-coral>text.t,:root.dark .c-coral>text.th{fill:#F5C4B3}
+:root.dark .c-coral>text.ts{fill:#F0997B}
+:root.dark .c-blue>rect,:root.dark .c-blue>circle,:root.dark .c-blue>ellipse{fill:#0C447C;stroke:#185FA5}
+:root.dark .c-blue>text.t,:root.dark .c-blue>text.th{fill:#B5D4F4}
+:root.dark .c-blue>text.ts{fill:#85B7EB}
+:root.dark .c-green>rect,:root.dark .c-green>circle,:root.dark .c-green>ellipse{fill:#27500A;stroke:#3B6D11}
+:root.dark .c-green>text.t,:root.dark .c-green>text.th{fill:#C0DD97}
+:root.dark .c-green>text.ts{fill:#97C459}
+:root.dark .c-pink>rect,:root.dark .c-pink>circle,:root.dark .c-pink>ellipse{fill:#72243E;stroke:#993556}
+:root.dark .c-pink>text.t,:root.dark .c-pink>text.th{fill:#F4C0D1}
+:root.dark .c-pink>text.ts{fill:#ED93B1}
+:root.dark .c-gray>rect,:root.dark .c-gray>circle,:root.dark .c-gray>ellipse{fill:#444441;stroke:#5F5E5A}
+:root.dark .c-gray>text.t,:root.dark .c-gray>text.th{fill:#D3D1C7}
+:root.dark .c-gray>text.ts{fill:#B4B2A9}
+:root.dark .c-red>rect,:root.dark .c-red>circle,:root.dark .c-red>ellipse{fill:#791F1F;stroke:#A32D2D}
+:root.dark .c-red>text.t,:root.dark .c-red>text.th{fill:#F7C1C1}
+:root.dark .c-red>text.ts{fill:#F09595}
+
+text.t{font-size:14px;font-weight:400;fill:var(--color-text-primary);font-family:var(--font-sans)}
+text.th{font-size:14px;font-weight:500;fill:var(--color-text-primary);font-family:var(--font-sans)}
+text.ts{font-size:12px;font-weight:400;fill:var(--color-text-secondary);font-family:var(--font-sans)}
+.node{cursor:pointer}
+.node:hover{opacity:0.82}
+.arr{stroke:var(--color-border-secondary);stroke-width:1.5;fill:none}
+.leader{stroke:var(--color-border-tertiary);stroke-width:0.5;fill:none;stroke-dasharray:3 3}
+
+  

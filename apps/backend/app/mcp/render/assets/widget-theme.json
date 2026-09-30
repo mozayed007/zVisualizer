@@ -1,0 +1,143 @@
+{
+  "version": 1,
+  "source": "apps/frontend/src/lib/designTokens.ts",
+  "tokens": {
+    "light": {
+      "--color-background-primary": "#ffffff",
+      "--color-background-secondary": "#f4f2eb",
+      "--color-background-tertiary": "#eceae3",
+      "--color-background-info": "#e6f1fb",
+      "--color-background-success": "#eaf3de",
+      "--color-background-warning": "#faeeda",
+      "--color-background-danger": "#faece7",
+      "--color-text-primary": "#1a1918",
+      "--color-text-secondary": "#5a5855",
+      "--color-text-tertiary": "#9b9890",
+      "--color-text-info": "#185fa5",
+      "--color-text-success": "#27500a",
+      "--color-text-warning": "#633806",
+      "--color-text-danger": "#712b13",
+      "--color-border-tertiary": "rgba(0, 0, 0, 0.09)",
+      "--color-border-secondary": "rgba(0, 0, 0, 0.14)",
+      "--color-border-primary": "rgba(0, 0, 0, 0.4)",
+      "--color-border-info": "#185fa5",
+      "--color-border-success": "#3b6d11",
+      "--color-border-warning": "#854f0b",
+      "--color-border-danger": "#993c1d",
+      "--font-sans": "'Plus Jakarta Sans', system-ui, sans-serif",
+      "--font-mono": "'JetBrains Mono', 'Fira Code', monospace",
+      "--font-serif": "Georgia, serif",
+      "--border-radius-sm": "4px",
+      "--border-radius-md": "8px",
+      "--border-radius-lg": "12px",
+      "--border-radius-xl": "16px",
+      "--p": "var(--color-text-primary)",
+      "--s": "var(--color-text-secondary)",
+      "--t": "var(--color-text-tertiary)",
+      "--bg2": "var(--color-background-secondary)",
+      "--b": "var(--color-border-tertiary)"
+    },
+    "dark": {
+      "--color-background-primary": "#141417",
+      "--color-background-secondary": "#1a1a1f",
+      "--color-background-tertiary": "#0d0d0f",
+      "--color-background-info": "rgba(55, 138, 221, 0.15)",
+      "--color-background-success": "rgba(99, 153, 34, 0.15)",
+      "--color-background-warning": "rgba(239, 159, 39, 0.15)",
+      "--color-background-danger": "rgba(216, 90, 48, 0.15)",
+      "--color-text-primary": "#e8e6df",
+      "--color-text-secondary": "#9b9890",
+      "--color-text-tertiary": "#5e5c58",
+      "--color-text-info": "#378add",
+      "--color-text-success": "#639922",
+      "--color-text-warning": "#ef9f27",
+      "--color-text-danger": "#d85a30",
+      "--color-border-tertiary": "rgba(255, 255, 255, 0.08)",
+      "--color-border-secondary": "rgba(255, 255, 255, 0.14)",
+      "--color-border-primary": "rgba(255, 255, 255, 0.4)"
+    }
+  },
+  "ramps": {
+    "purple": {
+      "50": "#EEEDFE",
+      "100": "#CECBF6",
+      "200": "#AFA9EC",
+      "400": "#7F77DD",
+      "600": "#534AB7",
+      "800": "#3C3489",
+      "900": "#26215C"
+    },
+    "teal": {
+      "50": "#E1F5EE",
+      "100": "#9FE1CB",
+      "200": "#5DCAA5",
+      "400": "#1D9E75",
+      "600": "#0F6E56",
+      "800": "#085041",
+      "900": "#04342C"
+    },
+    "amber": {
+      "50": "#FAEEDA",
+      "100": "#FAC775",
+      "200": "#EF9F27",
+      "400": "#BA7517",
+      "600": "#854F0B",
+      "800": "#633806",
+      "900": "#412402"
+    },
+    "coral": {
+      "50": "#FAECE7",
+      "100": "#F5C4B3",
+      "200": "#F0997B",
+      "400": "#D85A30",
+      "600": "#993C1D",
+      "800": "#712B13",
+      "900": "#4A1B0C"
+    },
+    "blue": {
+      "50": "#E6F1FB",
+      "100": "#B5D4F4",
+      "200": "#85B7EB",
+      "400": "#378ADD",
+      "600": "#185FA5",
+      "800": "#0C447C",
+      "900": "#042C53"
+    },
+    "green": {
+      "50": "#EAF3DE",
+      "100": "#C0DD97",
+      "200": "#97C459",
+      "400": "#639922",
+      "600": "#3B6D11",
+      "800": "#27500A",
+      "900": "#173404"
+    },
+    "pink": {
+      "50": "#FBEAF0",
+      "100": "#F4C0D1",
+      "200": "#ED93B1",
+      "400": "#D4537E",
+      "600": "#993556",
+      "800": "#72243E",
+      "900": "#4B1528"
+    },
+    "gray": {
+      "50": "#F1EFE8",
+      "100": "#D3D1C7",
+      "200": "#B4B2A9",
+      "400": "#888780",
+      "600": "#5F5E5A",
+      "800": "#444441",
+      "900": "#2C2C2A"
+    },
+    "red": {
+      "50": "#FCEBEB",
+      "100": "#F7C1C1",
+      "200": "#F09595",
+      "400": "#E24B4A",
+      "600": "#A32D2D",
+      "800": "#791F1F",
+      "900": "#501313"
+    }
+  }
+}
