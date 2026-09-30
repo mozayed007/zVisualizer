@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import os
+from collections.abc import MutableMapping
 from functools import lru_cache
 from pathlib import Path
 from typing import Annotated, Literal
@@ -133,6 +135,13 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("DATABASE_PATH", "CONVERSATIONS_DB_PATH"),
     )
 
+    # Native FastAPI OpenTelemetry (fastapi[standard] >= 0.142.2). The framework
+    # collects traces, metrics, and logs; exporting starts once an OTLP endpoint
+    # is set in the process environment or the .env files.
+    otel_service_name: str | None = None
+    otel_exporter_otlp_endpoint: str | None = None
+    otel_exporter_otlp_headers: str | None = None
+
     agent_config_dir: Path = PROJECT_ROOT / "config"
     agent_config_path: Path = PROJECT_ROOT / "config" / "agent.visual.yaml"
     default_agent_id: str = "visualizer"
@@ -234,6 +243,28 @@ class Settings(BaseSettings):
 
     def resolve_google_live_model_name(self) -> str:
         return self.google_live_model_name or "gemini-3.1-flash-live-preview"
+
+
+def export_otel_environment(
+    settings: Settings,
+    environ: MutableMapping[str, str] | None = None,
+) -> None:
+    """Publish OTEL settings into the process environment.
+
+    The OpenTelemetry SDK and FastAPI's built-in telemetry read the standard
+    OTEL_* variables from the process environment, but values loaded by
+    pydantic-settings from .env files stay out of it. Existing process
+    environment values win, so real environment variables override .env files.
+    """
+    target = os.environ if environ is None else environ
+    values = {
+        "OTEL_SERVICE_NAME": settings.otel_service_name or settings.app_name,
+        "OTEL_EXPORTER_OTLP_ENDPOINT": settings.otel_exporter_otlp_endpoint,
+        "OTEL_EXPORTER_OTLP_HEADERS": settings.otel_exporter_otlp_headers,
+    }
+    for key, value in values.items():
+        if value and not target.get(key):
+            target[key] = value
 
 
 @lru_cache(maxsize=1)

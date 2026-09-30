@@ -2,21 +2,21 @@ from __future__ import annotations
 
 import logging
 import uuid
-from collections.abc import AsyncIterator, Awaitable, Callable
+from collections.abc import AsyncIterator, Awaitable, Callable, MutableMapping
 from contextlib import asynccontextmanager
 from typing import Any, cast
 
 from fastapi import Depends, FastAPI, HTTPException, Request, WebSocket
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response, StreamingResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from fastapi.exceptions import RequestValidationError
 from starlette.middleware import Middleware
 from starlette.websockets import WebSocketState
 
 from app.core.errors import AppError, NotFoundAppError
 from app.core.logging import configure_logging
-from app.core.settings import BACKEND_ENV_PATH, ROOT_ENV_PATH, get_settings
+from app.core.settings import BACKEND_ENV_PATH, ROOT_ENV_PATH, export_otel_environment, get_settings
 from app.models.chat import ChatRequest, SyncVoiceRequest, WebSocketParams
 from app.services.chat_service import ChatService
 from app.services.live_dialogue_service import LiveDialogueService
@@ -24,6 +24,7 @@ from app.services.model_catalog import ModelCatalogService
 
 settings = get_settings()
 configure_logging()
+export_otel_environment(settings)
 logger = logging.getLogger(__name__)
 chat_service = ChatService(settings=settings)
 model_catalog_service = ModelCatalogService(settings=settings)
@@ -91,6 +92,14 @@ async def _authorize_live_websocket(websocket: WebSocket) -> bool:
     return True
 
 
+_TELEMETRY_EXCLUDED_PATHS = frozenset({"/health", "/ready"})
+
+
+def _exclude_from_telemetry(scope: MutableMapping[str, Any]) -> bool:
+    """Keep container and load-balancer probes out of traces and metrics."""
+    return scope.get("type") == "http" and scope.get("path") in _TELEMETRY_EXCLUDED_PATHS
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI) -> AsyncIterator[None]:
     logger.info("app-started", extra={"extra_data": {"environment": settings.environment}})
@@ -101,6 +110,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title=settings.app_name,
     lifespan=lifespan,
+    telemetry={"exclude": _exclude_from_telemetry},
     middleware=[
         Middleware(
             cast(Any, CORSMiddleware),

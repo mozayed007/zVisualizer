@@ -467,6 +467,20 @@ ruff check .
 ruff format .
 ```
 
+### OpenTelemetry
+
+The backend runs on `fastapi[standard]`, so FastAPI's built-in telemetry records HTTP request traces, request metrics, validation warnings, and unhandled-exception logs with no extra instrumentation code. WebSocket connections to `/api/live` get connection spans. `/health` and `/ready` probes are excluded.
+
+Set an OTLP/HTTP endpoint to start exporting (traces, metrics, and logs post to `/v1/traces`, `/v1/metrics`, and `/v1/logs` under it):
+
+```bash
+OTEL_EXPORTER_OTLP_ENDPOINT=https://collector.example.com
+OTEL_SERVICE_NAME=visualizer-agent
+OTEL_EXPORTER_OTLP_HEADERS=api-key=YOUR_API_KEY
+```
+
+Without an endpoint, telemetry stays off and nothing is collected or exported.
+
 ### Frontend Development
 
 ```bash
@@ -505,6 +519,11 @@ VITE_CHAT_API_KEY=your-secret-api-key
 
 # Optional database (defaults to data/conversations.db)
 DATABASE_PATH=/path/to/conversations.db
+
+# Optional OpenTelemetry export (any OTLP/HTTP collector)
+# OTEL_EXPORTER_OTLP_ENDPOINT=https://collector.example.com
+# OTEL_SERVICE_NAME=visualizer-agent
+# OTEL_EXPORTER_OTLP_HEADERS=api-key=your-collector-key
 ```
 
 ### Docker Compose
