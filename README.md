@@ -391,6 +391,7 @@ visualizer-agent/
 │   │   ├── app/
 │   │   │   ├── agent/        # Agent config, prompts, validators
 │   │   │   ├── core/         # Settings, errors, logging
+│   │   │   ├── mcp/          # MCP access server (visualizer-mcp)
 │   │   │   ├── models/       # Pydantic models (chat, widget)
 │   │   │   ├── repositories/ # Conversation persistence (SQLite)
 │   │   │   ├── services/     # Chat service, model catalog, rate limiting
@@ -445,6 +446,18 @@ visualizer-agent/
 | Endpoint | Method | Description |
 |----------|--------|-------------|
 | `/health` | `GET` | Service health status |
+
+## MCP Access for Other Agents
+
+The same agent is available over MCP as a standalone process (`visualizer-mcp`), so coding agents can request illustrations and interactive visuals and receive `.svg` / `.png` / `.html` files rendered outside the web app.
+
+```bash
+cd apps/backend
+pip install -e ".[mcp,render]" && playwright install chromium   # render extra is optional
+python -m app.mcp --transport stdio                             # local agents
+```
+
+Tools: `visualize`, `render_visual`, `validate_visual`, `get_capabilities`. Full setup, client configs, and artifact layout: [docs/MCP-SERVER.md](docs/MCP-SERVER.md). Design notes: [docs/MCP-SERVER-PLAN.md](docs/MCP-SERVER-PLAN.md).
 
 ## Development
 
