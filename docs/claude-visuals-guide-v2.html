@@ -830,9 +830,9 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
     <a href="#design-system"       ><span class="nav-num">05</span>Design System</a>
     <a href="#build"               ><span class="nav-num">06</span>Build Your Own</a>
     <a href="#agent"               ><span class="nav-num">07</span>Agentic System</a>
-    <a href="#prompts"             ><span class="nav-num">08</span>Learner Prompts</a>
+    <a href="#prompts"             ><span class="nav-num">08</span>User Prompts</a>
   </nav>
-  <div class="sidebar-footer">claude.ai · for learners · v2</div>
+  <div class="sidebar-footer">claude.ai · for users · v2</div>
 </aside>
 
 <!-- ═══════════════════════ MAIN ═══════════════════════════ -->
@@ -873,7 +873,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
   </div>
 
   <div class="callout teal">
-    <div class="callout-title">Why this matters for your learning companion</div>
+    <div class="callout-title">Why this matters for your visual companion</div>
     <p style="margin:0;font-size:14px">Every mechanism described in this guide is fully reproducible with the Anthropic API. You call the model, parse the code output, render it in a sandboxed <span class="inline-code">&lt;iframe srcdoc&gt;</span>, inject your own CSS variables, and expose a <span class="inline-code">sendPrompt()</span> bridge. No proprietary claude.ai APIs required.</p>
   </div>
 
@@ -888,7 +888,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
       <tr><td>Accessibility</td><td class="bad">Alt text only</td><td class="good">Native ARIA, keyboard nav, screen readers</td></tr>
       <tr><td>Editability</td><td class="bad">Cannot change a color without re-gen</td><td class="good">JS can mutate any SVG attribute live</td></tr>
       <tr><td>Latency</td><td class="bad">2–10 seconds for generation</td><td class="good">Streams token-by-token, loads as it arrives</td></tr>
-      <tr><td>Click-to-learn</td><td class="bad">Impossible — flat image</td><td class="good">onclick="sendPrompt(...)" on every node</td></tr>
+      <tr><td>Click-to-explore</td><td class="bad">Impossible — flat image</td><td class="good">onclick="sendPrompt(...)" on every node</td></tr>
       <tr><td>Cost</td><td class="bad">Separate image model API cost</td><td class="good">Zero extra cost — just text tokens</td></tr>
     </tbody>
   </table>
@@ -911,20 +911,20 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
   </div>
 
   <hr class="section-divider">
-  <h3 style="margin-bottom:10px">The agent loop — how visuals fit multi-turn learning</h3>
-  <p>In an agentic learning companion, visuals are not one-shot outputs. Every click on a diagram node triggers a new user message, which re-enters the model, which may generate another visual — creating a recursive loop of understanding.</p>
+  <h3 style="margin-bottom:10px">The agent loop — how visuals fit multi-turn conversation</h3>
+  <p>In an agentic visual companion, visuals are not one-shot outputs. Every click on a diagram node triggers a new user message, which re-enters the model, which may generate another visual — creating a recursive loop of understanding.</p>
   <div class="agent-loop">
-    <div class="agent-node purple-node"><div class="an-label">Learner asks</div><div class="an-sub">natural language</div></div>
+    <div class="agent-node purple-node"><div class="an-label">User asks</div><div class="an-sub">natural language</div></div>
     <div class="agent-arrow">→</div>
     <div class="agent-node"><div class="an-label">Model reasons</div><div class="an-sub">visual type + code</div></div>
     <div class="agent-arrow">→</div>
     <div class="agent-node teal-node"><div class="an-label">Widget renders</div><div class="an-sub">iframe srcdoc</div></div>
     <div class="agent-arrow">→</div>
-    <div class="agent-node amber-node"><div class="an-label">Learner clicks node</div><div class="an-sub">sendPrompt()</div></div>
+    <div class="agent-node amber-node"><div class="an-label">User clicks node</div><div class="an-sub">sendPrompt()</div></div>
     <div class="agent-arrow">→</div>
     <div class="agent-node purple-node"><div class="an-label">Deeper question</div><div class="an-sub">loops back</div></div>
   </div>
-  <p style="font-size:13px">This is the pedagogical breakthrough: the visual is not the end of the explanation, it's the start of a dialogue. A learner who clicks "What does the dip tube do?" inside a water heater diagram gets an answer tailored to exactly what they're looking at — with the diagram context still in the conversation window.</p>
+  <p style="font-size:13px">This is the key insight: the visual is not the end of the explanation, it's the start of a dialogue. A user who clicks "What does the dip tube do?" inside a water heater diagram gets an answer tailored to exactly what they're looking at — with the diagram context still in the conversation window.</p>
 </section>
 
 <!-- ──── SECTION 2: DECISION LOGIC ────────────────────── -->
@@ -1005,7 +1005,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
   <table class="dt">
     <thead><tr><th>User says</th><th>Type</th><th>Reasoning</th></tr></thead>
     <tbody>
-      <tr><td>"explain gradient descent"</td><td><span class="badge html">HTML</span></td><td>Has a control (learning rate slider). Interactive illustrative.</td></tr>
+      <tr><td>"explain gradient descent"</td><td><span class="badge html">HTML</span></td><td>Has a control (step size slider). Interactive illustrative.</td></tr>
       <tr><td>"transformer architecture"</td><td><span class="badge svg">SVG</span> structural</td><td>User wants a reference map, not an intuition.</td></tr>
       <tr><td>"how does attention work"</td><td><span class="badge svg">SVG</span> illustrative</td><td>Mechanism diagram: token fan, opacity = weight.</td></tr>
       <tr><td>"what are the training steps"</td><td><span class="badge svg">SVG</span> flowchart</td><td>Sequential process, user wants to follow steps.</td></tr>
@@ -1017,8 +1017,8 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
   </table>
 
   <hr class="section-divider">
-  <h3 style="margin-bottom:12px">Learner-platform routing in practice</h3>
-  <p>For an educational agent, the routing above is too generic. These are the subject-specific routing rules that produce the highest learning gain:</p>
+  <h3 style="margin-bottom:12px">User-platform routing in practice</h3>
+  <p>For a visual agent, the routing above is too generic. These are the subject-specific routing rules that matter most:</p>
 
   <div class="accordion" id="routing-accordion">
 
@@ -1031,7 +1031,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
         <p><strong style="color:var(--text)">Default:</strong> HTML with a live graph (Chart.js or D3) that responds to a slider. "Explain what a derivative is" → animated tangent line that moves along a curve as the user drags a point. The visual shows the limit process.</p>
         <p><strong style="color:var(--text)">Avoid:</strong> Static SVG with a fixed curve. It documents the result but doesn't show the mechanism of approximation.</p>
         <p><strong style="color:var(--text)">Prompt signal:</strong> Any phrase containing "as x approaches", "rate of change", "area under", "converges to" → reach for interactive HTML, not static SVG.</p>
-        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"I don't understand why the derivative of sin(x) is cos(x). Can you show me?"
+        <div class="prompt-block amber-border"><span class="pm-label">user-facing example prompt</span>"I don't understand why the derivative of sin(x) is cos(x). Can you show me?"
 → HTML widget: animated unit circle + tangent line slider + live dy/dx readout</div>
       </div>
     </div>
@@ -1045,7 +1045,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
         <p><strong style="color:var(--text)">Default:</strong> HTML stepper for algorithms (one step per click, array/tree redraws in SVG inside the stepper). "Show me how bubble sort works" → array of colored bars, step button highlights the comparison, bars swap with a smooth transition.</p>
         <p><strong style="color:var(--text)">Memory / pointers:</strong> Illustrative SVG — boxes connected by literal arrow lines. A stack frame IS a rectangle. A pointer IS an arrow. Draw it.</p>
         <p><strong style="color:var(--text)">Trees &amp; graphs:</strong> SVG structural diagram with c-purple nodes and thin lines. Node click → sendPrompt about that traversal step.</p>
-        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"Explain how quicksort partitions an array step by step"
+        <div class="prompt-block amber-border"><span class="pm-label">user-facing example prompt</span>"Explain how quicksort partitions an array step by step"
 → HTML stepper: colored array, pivot highlighted in amber, left/right pointers moving, partition line drawing</div>
       </div>
     </div>
@@ -1060,22 +1060,22 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
         <p><strong style="color:var(--text)">Waves:</strong> HTML + Canvas or SVG path animation. Frequency and amplitude sliders. The wave redraws on every input event.</p>
         <p><strong style="color:var(--text)">Molecular structure:</strong> Illustrative SVG with hardcoded physical colors (atom color conventions are universal — oxygen is red, hydrogen is white, carbon is black/gray). These must be hardcoded, not CSS variables, because they should not invert in dark mode.</p>
         <p><strong style="color:var(--text)">Chemical reactions:</strong> HTML stepper showing reactants → transition state → products, with color transitions showing bond formation/breaking.</p>
-        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"Show me how a sine wave changes when I increase frequency vs amplitude"
+        <div class="prompt-block amber-border"><span class="pm-label">user-facing example prompt</span>"Show me how a sine wave changes when I increase frequency vs amplitude"
 → HTML: canvas path, two range sliders (frequency 1–10Hz, amplitude 0.1–2), live redraw at 60fps</div>
       </div>
     </div>
 
     <div class="acc-item">
       <div class="acc-trigger" onclick="toggleAcc(this)">
-        <div><div class="acc-trigger-title">Machine learning &amp; AI</div><div class="acc-trigger-sub">neural nets, training, embeddings, attention</div></div>
+        <div><div class="acc-trigger-title">AI systems</div><div class="acc-trigger-sub">neural nets, training, embeddings, attention</div></div>
         <span class="acc-arrow">▼</span>
       </div>
       <div class="acc-body">
         <p><strong style="color:var(--text)">Neural network structure:</strong> SVG structural diagram — layers as columns of circles, weights as thin lines. Color encodes activation intensity (amber = high, gray = low).</p>
-        <p><strong style="color:var(--text)">Training process:</strong> HTML with Chart.js — live loss curve that animates downward as the "training" slider moves. Add a learning rate control to show overshooting.</p>
+        <p><strong style="color:var(--text)">Training process:</strong> HTML with Chart.js — live loss curve that animates downward as the "training" slider moves. Add a step size control to show overshooting.</p>
         <p><strong style="color:var(--text)">Attention:</strong> Illustrative SVG — token row at bottom, one highlighted in amber, lines fanning up with stroke-width encoding weight. Make it interactive: click any token to become the query.</p>
         <p><strong style="color:var(--text)">Embeddings:</strong> D3 scatter plot in HTML — words as dots in 2D projection, clusters visible. Hover shows the word, similar words cluster together.</p>
-        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"I don't understand what attention weights actually represent"
+        <div class="prompt-block amber-border"><span class="pm-label">user-facing example prompt</span>"I don't understand what attention weights actually represent"
 → SVG illustrative: 5-token row, one amber "query" token, 5 fan lines with stroke-width and opacity = weight,
    caption below: "thickness = how much 'sat' attends to each other token"</div>
       </div>
@@ -1091,7 +1091,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
         <p><strong style="color:var(--text)">Physiological processes (heart, lungs, kidneys):</strong> Illustrative SVG cross-section with physical colors. Animate fluid flow with CSS stroke-dasharray animation. A beating heart is 3 keyframes.</p>
         <p><strong style="color:var(--text)">Genetics / DNA:</strong> Illustrative SVG — double helix shown as two parallel strands with rungs. Base pairs color-coded (A-T: amber, G-C: teal). Unzip animation in HTML.</p>
         <p><strong style="color:var(--text)">Drug mechanisms:</strong> HTML stepper — receptor + molecule approaching, binding, conformational change, downstream effect. Each step is a panel.</p>
-        <div class="prompt-block amber-border"><span class="pm-label">learner-facing example prompt</span>"Explain how the immune system responds to a pathogen"
+        <div class="prompt-block amber-border"><span class="pm-label">user-facing example prompt</span>"Explain how the immune system responds to a pathogen"
 → HTML stepper: 5 stages (detection → APC activation → T-cell proliferation → antibody production → memory cells),
    each panel has SVG illustration + 2-line explanation</div>
       </div>
@@ -1100,8 +1100,8 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
   </div>
 
   <div class="callout purple" style="margin-top:20px">
-    <div class="callout-title">The pedagogical routing rule</div>
-    <p style="margin:0;font-size:14px">Ask: does the learner need to <em>document</em> something or <em>feel</em> how it works? Documentation → flowchart/structural SVG. Feeling → illustrative SVG or interactive HTML. When in doubt, reach for the interactive version — a diagram you can operate creates 3× the recall of one you passively view.</p>
+    <div class="callout-title">The routing rule</div>
+    <p style="margin:0;font-size:14px">Ask: does the user need to <em>document</em> something or <em>feel</em> how it works? Documentation → flowchart/structural SVG. Feeling → illustrative SVG or interactive HTML. When in doubt, reach for the interactive version — a diagram you can operate creates 3× the recall of one you passively view.</p>
   </div>
 </section>
 
@@ -1194,15 +1194,15 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
 <span class="cm">/* Content HTML first — visible while scripts load */</span>
 <span class="tag">&lt;div</span> <span class="attr">style</span>=<span class="str">"padding: 1rem 0"</span><span class="tag">&gt;</span>
   <span class="tag">&lt;label</span> <span class="attr">style</span>=<span class="str">"font-size:13px; color:var(--color-text-secondary)"</span><span class="tag">&gt;</span>
-    Learning rate
+    Step size
   <span class="tag">&lt;/label&gt;</span>
   <span class="cm">/* Range slider pre-styled by parent CSS */</span>
-  <span class="tag">&lt;input</span> <span class="attr">type</span>=<span class="str">"range"</span> <span class="attr">id</span>=<span class="str">"lr"</span> <span class="attr">min</span>=<span class="str">"1"</span> <span class="attr">max</span>=<span class="str">"100"</span> <span class="attr">value</span>=<span class="str">"10"</span>
+  <span class="tag">&lt;input</span> <span class="attr">type</span>=<span class="str">"range"</span> <span class="attr">id</span>=<span class="str">"stepSize"</span> <span class="attr">min</span>=<span class="str">"1"</span> <span class="attr">max</span>=<span class="str">"100"</span> <span class="attr">value</span>=<span class="str">"10"</span>
          <span class="attr">oninput</span>=<span class="str">"update(this.value)"</span><span class="tag">/&gt;</span>
   <span class="tag">&lt;div</span> <span class="attr">id</span>=<span class="str">"output"</span><span class="tag">&gt;</span>value: 0.10<span class="tag">&lt;/div&gt;</span>
 
   <span class="cm">/* sendPrompt() bridge — fires a message into the chat */</span>
-  <span class="tag">&lt;button</span> <span class="attr">onclick</span>=<span class="str">"sendPrompt('What happens if learning rate is too high?')"</span><span class="tag">&gt;</span>
+  <span class="tag">&lt;button</span> <span class="attr">onclick</span>=<span class="str">"sendPrompt('What happens if the step size is too high?')"</span><span class="tag">&gt;</span>
     Ask about this ↗
   <span class="tag">&lt;/button&gt;</span>
 <span class="tag">&lt;/div&gt;</span>
@@ -1303,7 +1303,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
     model: <span class="str">'claude-sonnet-4-20250514'</span>,
     max_tokens: <span class="val">8192</span>,
     stream: <span class="val">true</span>,
-    system: LEARNER_SYSTEM_PROMPT,
+    system: BASE_SYSTEM_PROMPT,
     tools: [SHOW_WIDGET_TOOL_DEFINITION], <span class="cm">// the schema above</span>
     messages: conversationHistory  <span class="cm">// full multi-turn history</span>
   })
@@ -1394,7 +1394,7 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
         <div class="layer-title">Model reasoning &amp; code generation</div>
         <div class="layer-sub">Claude reads context, decides visual type, calculates coordinates, writes SVG or HTML as plain text.</div>
         <div class="layer-tech">LLM inference → tool call: show_widget(title, widget_code, loading_messages)</div>
-        <div class="layer-detail">No image model. No canvas API. No external rendering service. The model generates raw markup the same way it generates Python or JSON — token by token from learned patterns. The quality of the visual comes entirely from the precision of the coordinate math inside the generated code. A rect at x=40 always lands 40px from the left. There is no rendering layer that "fixes" bad coordinates. The design system rules (coordinate math, color encoding, diagram type routing) are all applied during generation, not during rendering.</div>
+        <div class="layer-detail">No image model. No canvas API. No external rendering service. The model generates raw markup the same way it generates Python or JSON — token by token from trained patterns. The quality of the visual comes entirely from the precision of the coordinate math inside the generated code. A rect at x=40 always lands 40px from the left. There is no rendering layer that "fixes" bad coordinates. The design system rules (coordinate math, color encoding, diagram type routing) are all applied during generation, not during rendering.</div>
       </div>
     </div>
 
@@ -1494,23 +1494,23 @@ code { font-family: var(--font-mono); font-size: 12.5px; }
 <!-- ──── SECTION 6: BUILD YOUR OWN ────────────────────── -->
 <section id="build">
   <div class="section-eyebrow">06 — Build Your Own</div>
-  <h2>Replicating this in your learning companion</h2>
+  <h2>Replicating this in your visual companion</h2>
   <p class="lead">Every layer is reproducible with the standard Anthropic API. Here is the complete blueprint — no proprietary claude.ai APIs required.</p>
 
   <div class="bp-step">
     <div class="bp-num">1</div>
     <div class="bp-body">
-      <h3>System prompt: teach the model your design tokens</h3>
+      <h3>System prompt: give the model your design tokens</h3>
       <p>Define your visual routing rules, your CSS variable names, and your color palette in the system prompt. The model generates code against whatever design system you describe. You don't need the claude.ai palette — define your own variables.</p>
     </div>
   </div>
 
 <pre style="margin:0 0 20px 54px"><span class="cm">// Example system prompt fragment:</span>
-<span class="str">"When a visual would help the learner understand, generate raw SVG
+<span class="str">"When a visual would help the user understand, generate raw SVG
 or HTML. Use these CSS variables for all colors:
-  --learner-primary: your brand color
-  --learner-surface: card background
-  --learner-text: body text
+  --brand-primary: your brand color
+  --brand-surface: card background
+  --brand-text: body text
 All color ramps follow: [your palette].
 Expose sendPrompt(text) for clickable follow-ups."</span></pre>
 
@@ -1579,13 +1579,13 @@ Expose sendPrompt(text) for clickable follow-ups."</span></pre>
     <div class="bp-num">4</div>
     <div class="bp-body">
       <h3>Handle the sendPrompt bridge</h3>
-      <p>Listen for postMessage events from the iframe. When one arrives, inject the text as the next user message — continuing the tutoring conversation seamlessly.</p>
+      <p>Listen for postMessage events from the iframe. When one arrives, inject the text as the next user message — continuing the conversation seamlessly.</p>
     </div>
   </div>
 
 <pre style="margin:0 0 20px 54px">window.<span class="fn">addEventListener</span>(<span class="str">'message'</span>, event => {
   <span class="kw">if</span> (event.data?.type === <span class="str">'prompt'</span>) {
-    <span class="cm">// Inject as next user message in the tutoring session</span>
+    <span class="cm">// Inject as next user message in the session</span>
     <span class="fn">sendToModel</span>(event.data.text);
   }
 });</pre>
@@ -1593,21 +1593,21 @@ Expose sendPrompt(text) for clickable follow-ups."</span></pre>
   <div class="bp-step">
     <div class="bp-num">5</div>
     <div class="bp-body">
-      <h3>Teaching-specific additions</h3>
-      <p>For a learning companion, extend the system prompt with pedagogical routing: prefer illustrative diagrams over flowcharts for concept explanation, use steppers for sequential processes, make every node clickable with a follow-up question that deepens understanding.</p>
+      <h3>Explanation-specific additions</h3>
+      <p>For a visual companion, extend the system prompt with routing: prefer illustrative diagrams over flowcharts for concept explanation, use steppers for sequential processes, make every node clickable with a follow-up question that deepens understanding.</p>
     </div>
   </div>
 
   <hr class="section-divider">
-  <h3 style="margin-bottom:12px">Complete system prompt template for a learning companion</h3>
+  <h3 style="margin-bottom:12px">Complete system prompt template for a visual companion</h3>
   <p>Copy, adapt, and extend this template. Every section is load-bearing — do not remove sections, only edit the variables in brackets.</p>
 
   <div class="prompt-block">
-<span class="pm-label">system prompt · learner agent</span>You are an expert learning companion for [SUBJECT AREA]. Your learners are [LEARNER PROFILE — e.g. "university students with no prior calculus background"].
+<span class="pm-label">system prompt · visual agent</span>You are an expert visual companion for [SUBJECT AREA]. Your users are [AUDIENCE — e.g. "engineers, analysts, and designers with varied technical backgrounds"].
 
 ## Visual routing rules
 
-When a learner asks a question where a diagram, chart, or interactive explainer would meaningfully improve understanding, call the show_widget tool. Apply these rules strictly:
+When a user asks a question where a diagram, chart, or interactive explainer would meaningfully improve understanding, call the show_widget tool. Apply these rules strictly:
 
 **Always use show_widget for:**
 - "explain how X works" → illustrative SVG or interactive HTML
@@ -1620,7 +1620,7 @@ When a learner asks a question where a diagram, chart, or interactive explainer 
 **Never use show_widget for:**
 - Direct factual questions ("what year did X happen?")
 - Definitions that are one sentence long
-- Questions where the learner explicitly asked for text only
+- Questions where the user explicitly asked for text only
 - Code debugging or code writing tasks
 
 ## SVG rules (strictly enforced)
@@ -1648,27 +1648,27 @@ Every diagram node that could lead to a deeper question must have:
 onclick="sendPrompt('&lt;specific follow-up question about that node&gt;')"
 
 The follow-up question must be:
-- Specific to what the learner just clicked (not generic "tell me more")
+- Specific to what the user just clicked (not generic "tell me more")
 - One level deeper than what the node label says
-- Phrased as the learner would ask it
+- Phrased as the user would ask it
 
-## Pedagogical principles
+## Explanation principles
 
 1. Illustrative over flowchart: when explaining a mechanism, draw it spatially — not as boxes and arrows. A hash function is a funnel. Recursion is a stack of frames. Attention is a fan of weighted lines.
-2. Interactive over static: if the system has a control (thermostat, learning rate, frequency), give the diagram that control.
+2. Interactive over static: if the system has a control (thermostat, step size, frequency), give the diagram that control.
 3. Click-to-deepen: every visual element that could lead to a question should trigger one on click.
 4. Color encodes meaning, not sequence: don't rainbow-cycle. Group by category or map to physical properties (warm = hot/active, cool = calm/passive).
 5. Multiple small diagrams over one dense diagram: build understanding progressively, one concept per visual.
 
 ## Tone and persona
 
-[YOUR TONE INSTRUCTIONS — e.g. "Warm, encouraging, Socratic. Ask one question per response to check understanding."]</div>
+[YOUR TONE INSTRUCTIONS — e.g. "Warm, encouraging, candid. Ask one question per response to check understanding."]</div>
 
   <hr class="section-divider">
   <h3 style="margin-bottom:12px">Full renderWidget implementation with auto-sizing</h3>
 
 <pre><span class="cm">// Complete CSS variable set to inject into every iframe</span>
-<span class="kw">function</span> <span class="fn">getLearnerCSS</span>() {
+<span class="kw">function</span> <span class="fn">getWidgetCSS</span>() {
   <span class="kw">const</span> dark = window.matchMedia(<span class="str">'(prefers-color-scheme: dark)'</span>).matches;
   <span class="kw">return</span> <span class="str">`
 :root {
@@ -1780,7 +1780,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
   iframe.title = title;
 
   <span class="kw">const</span> bridge = <span class="str">`&lt;script&gt;
-    window.sendPrompt = t => parent.postMessage({type:'learner_prompt',text:t,widgetTitle:'${title}'},'*');
+    window.sendPrompt = t => parent.postMessage({type:'follow_up_prompt',text:t,widgetTitle:'${title}'},'*');
     window.addEventListener('load', () => {
       parent.postMessage({type:'iframe_resize',h:document.documentElement.scrollHeight},'*');
     });
@@ -1789,7 +1789,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
     }).observe(document.body);
   &lt;/script&gt;`</span>;
 
-  iframe.srcdoc = <span class="str">`&lt;style&gt;${getLearnerCSS()}&lt;/style&gt;${bridge}${widget_code}`</span>;
+  iframe.srcdoc = <span class="str">`&lt;style&gt;${getWidgetCSS()}&lt;/style&gt;${bridge}${widget_code}`</span>;
   card.<span class="fn">appendChild</span>(iframe);
 
   <span class="cm">// Auto-size + sendPrompt bridge</span>
@@ -1797,14 +1797,14 @@ button { cursor: pointer; font-family: var(--font-sans); }
     <span class="kw">if</span> (e.source !== iframe.contentWindow) <span class="kw">return</span>;
     <span class="kw">if</span> (e.data.type === <span class="str">'iframe_resize'</span>)
       iframe.style.height = (e.data.h + <span class="val">8</span>) + <span class="str">'px'</span>;
-    <span class="kw">if</span> (e.data.type === <span class="str">'learner_prompt'</span>)
+    <span class="kw">if</span> (e.data.type === <span class="str">'follow_up_prompt'</span>)
       <span class="fn">sendToAgent</span>(e.data.text, { contextWidget: e.data.widgetTitle });
   });
 }</pre>
 
   <div class="callout teal">
-    <div class="callout-title">The key insight for learning</div>
-    <p style="margin:0;font-size:14px">The most impactful design principle is the <strong style="color:var(--text)">illustrative vs. flowchart split</strong>. When explaining a concept, the temptation is to draw boxes and arrows. The better answer is usually a spatial metaphor that shows the mechanism — attention weights as a fan of lines, gradient descent as a ball on a loss surface, recursion as a stack of frames. That's what makes a visual actually teach rather than just document. Prompt the model explicitly toward this pattern for conceptual explanations.</p>
+    <div class="callout-title">The key insight</div>
+    <p style="margin:0;font-size:14px">The most impactful design principle is the <strong style="color:var(--text)">illustrative vs. flowchart split</strong>. When explaining a concept, the temptation is to draw boxes and arrows. The better answer is usually a spatial metaphor that shows the mechanism — attention weights as a fan of lines, gradient descent as a ball on a loss surface, recursion as a stack of frames. That's what makes a visual actually explain rather than just document. Prompt the model explicitly toward this pattern for conceptual explanations.</p>
   </div>
 
   <div class="callout" style="margin-top:16px">
@@ -1831,20 +1831,20 @@ button { cursor: pointer; font-family: var(--font-sans); }
 <section id="agent">
   <div class="section-eyebrow">07 — Agentic System</div>
   <h2>Building the full agent loop</h2>
-  <p class="lead">A learning companion is not a one-shot chatbot. It maintains conversation history, routes tool calls, tracks what the learner has seen, and uses every visual click as a signal about where understanding needs deepening.</p>
+  <p class="lead">A visual companion is not a one-shot chatbot. It maintains conversation history, routes tool calls, tracks what the user has seen, and uses every visual click as a signal about where understanding needs deepening.</p>
 
   <h3 style="margin-bottom:12px">Multi-turn conversation with widget context</h3>
-  <p>The agent needs to carry the full conversation history on every request. When a learner clicks a node inside a diagram, the widget title is passed alongside the question — giving the model context about what diagram was being viewed.</p>
+  <p>The agent needs to carry the full conversation history on every request. When a user clicks a node inside a diagram, the widget title is passed alongside the question — giving the model context about what diagram was being viewed.</p>
 
 <pre><span class="cm">// Agent state — lives in your app, not the model</span>
 <span class="kw">const</span> agentState = {
   history: [],        <span class="cm">// full message array — grows with every turn</span>
   activeWidgets: {},  <span class="cm">// widgetTitle → { code, topic, renderedAt }</span>
-  learnerProfile: {
+  userProfile: {
     name: <span class="str">''</span>,
     subject: <span class="str">''</span>,
-    conceptsSeen: [],  <span class="cm">// track what's been visualised</span>
-    strugglingWith: [] <span class="cm">// inferred from repeated questions</span>
+    topicsVisualized: [],  <span class="cm">// track what's been visualised</span>
+    unclearTopics: [] <span class="cm">// inferred from repeated questions</span>
   }
 };
 
@@ -1867,7 +1867,7 @@ button { cursor: pointer; font-family: var(--font-sans); }
       model: <span class="str">'claude-sonnet-4-20250514'</span>,
       max_tokens: <span class="val">8192</span>,
       stream: <span class="val">true</span>,
-      system: <span class="fn">buildSystemPrompt</span>(agentState.learnerProfile),
+      system: <span class="fn">buildSystemPrompt</span>(agentState.userProfile),
       tools: [SHOW_WIDGET_TOOL],
       messages: agentState.history  <span class="cm">// full history every time</span>
     })
@@ -1881,9 +1881,9 @@ button { cursor: pointer; font-family: var(--font-sans); }
     (toolName, params) => {
       assistantBlocks.<span class="fn">push</span>({ type: <span class="str">'tool_use'</span>, name: toolName, input: params });
       <span class="fn">renderWidget</span>(params, chatContainer);
-      <span class="cm">// Track what's been shown to this learner</span>
+      <span class="cm">// Track what's been shown to this user</span>
       agentState.activeWidgets[params.title] = { code: params.widget_code, shownAt: Date.now() };
-      agentState.learnerProfile.conceptsSeen.<span class="fn">push</span>(params.title);
+      agentState.userProfile.topicsVisualized.<span class="fn">push</span>(params.title);
     }
   );
 
@@ -1898,25 +1898,25 @@ button { cursor: pointer; font-family: var(--font-sans); }
 }</pre>
 
   <hr class="section-divider">
-  <h3 style="margin-bottom:12px">Learner profile — building understanding over time</h3>
-  <p>As the agent observes which concepts trigger follow-up questions and which diagrams the learner clicks into, it can adjust the system prompt dynamically — spending more time on struggled concepts and less on mastered ones.</p>
+  <h3 style="margin-bottom:12px">User profile — building understanding over time</h3>
+  <p>As the agent observes which concepts trigger follow-up questions and which diagrams the user clicks into, it can adjust the system prompt dynamically — spending more time on unclear concepts and less on already-covered ones.</p>
 
-<pre><span class="kw">function</span> <span class="fn">buildSystemPrompt</span>(learnerProfile) {
-  <span class="kw">const</span> base = LEARNER_SYSTEM_PROMPT; <span class="cm">// your full template from §06</span>
+<pre><span class="kw">function</span> <span class="fn">buildSystemPrompt</span>(userProfile) {
+  <span class="kw">const</span> base = BASE_SYSTEM_PROMPT; <span class="cm">// your full template from §06</span>
 
-  <span class="kw">const</span> profileAddendum = learnerProfile.conceptsSeen.length > <span class="val">0</span> ? <span class="str">`
-## Learner context
-- Name: ${learnerProfile.name || 'the learner'}
-- Concepts already visualised this session: ${learnerProfile.conceptsSeen.join(', ')}
-- Do not re-explain concepts the learner has already seen a diagram for — build on them.
-${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfile.strugglingWith.join(', ')} — spend extra time here.` : ''}
+  <span class="kw">const</span> profileAddendum = userProfile.topicsVisualized.length > <span class="val">0</span> ? <span class="str">`
+## User context
+- Name: ${userProfile.name || 'the user'}
+- Topics already visualized this session: ${userProfile.topicsVisualized.join(', ')}
+- Do not re-explain concepts the user has already seen a diagram for — build on them.
+${userProfile.unclearTopics.length > 0 ? `- Unclear topics: ${userProfile.unclearTopics.join(', ')} — spend extra time here.` : ''}
 `</span> : <span class="str">''</span>;
 
   <span class="kw">return</span> base + profileAddendum;
 }</pre>
 
   <hr class="section-divider">
-  <h3 style="margin-bottom:12px">Common agentic patterns for learner platforms</h3>
+  <h3 style="margin-bottom:12px">Common agentic patterns for chat platforms</h3>
 
   <div class="accordion">
 
@@ -1926,8 +1926,8 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
         <span class="acc-arrow">▼</span>
       </div>
       <div class="acc-body">
-        <p>The most effective learning loop: Claude explains a concept in prose, generates a visual, then asks a Socratic question at the end. The learner's answer goes back into the conversation, and the agent decides whether to go deeper or advance.</p>
-        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>After every concept explanation with a visual, end your response with a single Socratic question that tests whether the learner understood the mechanism — not just the definition. Wait for their answer before proceeding. If they answer correctly, acknowledge it briefly and offer to go deeper. If not, generate a different visual that approaches the same concept from a different angle.</div>
+        <p>The most effective conversation loop: Claude explains a concept in prose, generates a visual, then asks a follow-up question at the end. The user's answer goes back into the conversation, and the agent decides whether to go deeper or advance.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>After every concept explanation with a visual, end your response with a single follow-up question that tests whether the user understood the mechanism — not just the definition. Wait for their answer before proceeding. If they answer correctly, acknowledge it briefly and offer to go deeper. If not, generate a different visual that approaches the same concept from a different angle.</div>
       </div>
     </div>
 
@@ -1937,8 +1937,8 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
         <span class="acc-arrow">▼</span>
       </div>
       <div class="acc-body">
-        <p>For complex topics (neural networks, organic chemistry, quantum mechanics), the first diagram should be deliberately simplified. The full complexity lives behind <span class="inline-code">sendPrompt()</span> clicks on each component. This prevents the learner from being overwhelmed and gives them agency over the depth of exploration.</p>
-        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>For complex multi-component topics, always start with an overview diagram showing 3-4 high-level components only. Keep subtitles to 4 words maximum. Put the depth in the onclick sendPrompt questions — make each one invite the learner to zoom into that component specifically. The detail diagram for each component comes only when they click.</div>
+        <p>For complex topics (neural networks, organic chemistry, quantum mechanics), the first diagram should be deliberately simplified. The full complexity lives behind <span class="inline-code">sendPrompt()</span> clicks on each component. This prevents the user from being overwhelmed and gives them agency over the depth of exploration.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>For complex multi-component topics, always start with an overview diagram showing 3-4 high-level components only. Keep subtitles to 4 words maximum. Put the depth in the onclick sendPrompt questions — make each one invite the user to zoom into that component specifically. The detail diagram for each component comes only when they click.</div>
       </div>
     </div>
 
@@ -1948,8 +1948,8 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
         <span class="acc-arrow">▼</span>
       </div>
       <div class="acc-body">
-        <p>Research shows that learners who encounter the same concept in multiple visual formats (equation, graph, spatial metaphor, real-world analogy) retain it significantly longer. The agent can explicitly cycle through representations when it detects confusion.</p>
-        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>If a learner asks the same question a second time, or says they still don't understand after seeing a diagram, do not regenerate the same diagram. Instead, choose a completely different visual representation of the same concept — switch from structural to illustrative, from static SVG to interactive HTML, from abstract to concrete example. Every re-explanation must use a different visual encoding.</div>
+        <p>Research shows that users who encounter the same concept in multiple visual formats (equation, graph, spatial metaphor, real-world analogy) retain it significantly longer. The agent can explicitly cycle through representations when it detects confusion.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>If a user asks the same question a second time, or says they still don't understand after seeing a diagram, do not regenerate the same diagram. Instead, choose a completely different visual representation of the same concept — switch from structural to illustrative, from static SVG to interactive HTML, from abstract to concrete example. Every re-explanation must use a different visual encoding.</div>
       </div>
     </div>
 
@@ -1959,19 +1959,19 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
         <span class="acc-arrow">▼</span>
       </div>
       <div class="acc-body">
-        <p>Learners understand concepts best in contrast. "What is a stack?" is harder to answer than "How is a stack different from a queue?". The agent should default to comparative visuals that show both options simultaneously.</p>
-        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>When a learner asks "what is X?" for any data structure, algorithm, or concept that has a natural counterpart, generate a side-by-side SVG structural diagram showing X and its complement (stack/queue, array/linked list, TCP/UDP, supervised/unsupervised). The visual difference teaches both concepts simultaneously.</div>
+        <p>Users understand concepts best in contrast. "What is a stack?" is harder to answer than "How is a stack different from a queue?". The agent should default to comparative visuals that show both options simultaneously.</p>
+        <div class="prompt-block teal-border"><span class="pm-label">system prompt addition</span>When a user asks "what is X?" for any data structure, algorithm, or concept that has a natural counterpart, generate a side-by-side SVG structural diagram showing X and its complement (stack/queue, array/linked list, TCP/UDP, supervised/unsupervised). The visual difference shows both concepts simultaneously.</div>
       </div>
     </div>
 
   </div>
 </section>
 
-<!-- ──── SECTION 8: LEARNER PROMPTS ───────────────────── -->
+<!-- ──── SECTION 8: USER PROMPTS ───────────────────── -->
 <section id="prompts">
-  <div class="section-eyebrow">08 — Learner Prompts</div>
+  <div class="section-eyebrow">08 — User Prompts</div>
   <h2>Prompt patterns that unlock the best visuals</h2>
-  <p class="lead">The quality of the visual is partly a function of how the question is asked. These are the prompt patterns that reliably produce the highest-quality educational visuals — teach these patterns to your learners or bake them into your UI as quick-action buttons.</p>
+  <p class="lead">The quality of the visual is partly a function of how the question is asked. These are the prompt patterns that reliably produce the highest-quality visual explanations — share these patterns with your users or bake them into your UI as quick-action buttons.</p>
 
   <h3 style="margin-bottom:12px">High-yield prompt patterns</h3>
   <table class="dt">
@@ -1990,7 +1990,7 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
 
   <hr class="section-divider">
   <h3 style="margin-bottom:12px">Quick-action button prompts (copy into your UI)</h3>
-  <p>Add these as chip/button actions below every agent response. They give learners structured ways to deepen their understanding without having to formulate a question from scratch.</p>
+  <p>Add these as chip/button actions below every agent response. They give users structured ways to deepen their understanding without having to formulate a question from scratch.</p>
 
   <div class="card-grid">
     <div class="card">
@@ -2017,7 +2017,7 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
 
   <hr class="section-divider">
   <h3 style="margin-bottom:12px">Subject-specific starter prompts</h3>
-  <p>Starter prompts tuned by subject area that reliably trigger the best educational visuals:</p>
+  <p>Starter prompts tuned by subject area that reliably trigger the best visual explanations:</p>
 
   <div class="accordion">
     <div class="acc-item">
@@ -2058,10 +2058,10 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
     </div>
     <div class="acc-item">
       <div class="acc-trigger" onclick="toggleAcc(this)">
-        <div><div class="acc-trigger-title">Machine Learning &amp; AI</div></div><span class="acc-arrow">▼</span>
+        <div><div class="acc-trigger-title">AI systems</div></div><span class="acc-arrow">▼</span>
       </div>
       <div class="acc-body">
-        <div class="prompt-block"><span class="pm-label">starter prompts</span>"Show me gradient descent on a 2D loss surface with a learning rate slider"
+        <div class="prompt-block"><span class="pm-label">starter prompts</span>"Show me gradient descent on a 2D loss surface with a step size slider"
 "Draw what a neural network actually does to classify a simple input — show activations"
 "Explain the attention mechanism in transformers — make the weights visible"
 "Show me how word embeddings cluster similar words in 2D space"
@@ -2072,7 +2072,7 @@ ${learnerProfile.strugglingWith.length > 0 ? `- Struggling with: ${learnerProfil
 
   <div class="callout purple" style="margin-top:24px">
     <div class="callout-title">For your platform: pre-fill these as one-click actions</div>
-    <p style="margin:0;font-size:14px">The highest drop-off point in learner engagement is the blank input box. Pre-populate your chat UI with 3–4 subject-specific starter prompts as clickable chips. When a learner finishes viewing a diagram, show 2–3 contextual follow-up chips based on what they just saw. The clicks replace the cognitive load of formulating a question — and they reliably trigger the best visual outputs.</p>
+    <p style="margin:0;font-size:14px">The highest drop-off point in user engagement is the blank input box. Pre-populate your chat UI with 3–4 subject-specific starter prompts as clickable chips. When a user finishes viewing a diagram, show 2–3 contextual follow-up chips based on what they just saw. The clicks replace the cognitive load of formulating a question — and they reliably trigger the best visual outputs.</p>
   </div>
 </section>
 

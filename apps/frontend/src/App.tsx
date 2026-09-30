@@ -6,7 +6,7 @@ import { TopBar } from '@/components/layout/TopBar'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { VoiceConsole, type VoiceConsoleRef } from '@/components/voice/VoiceConsole'
 import { useTheme } from '@/hooks/useTheme'
-import { useLearnerProfile } from '@/hooks/useLearnerProfile'
+import { useUserProfile } from '@/hooks/useUserProfile'
 import {
   getAvailableAgents,
   getAvailableModels,
@@ -71,7 +71,7 @@ function findLatestAssistantIndex(messages: ChatMessage[], allowClosed: boolean)
 
 export default function App() {
   const { theme, toggleTheme } = useTheme()
-  const { profile, incrementInteraction } = useLearnerProfile()
+  const { profile, incrementInteraction } = useUserProfile()
 
   const [conversationId, setConversationId] = useState<string>()
   const [messages, setMessages] = useState<ChatMessage[]>([])
@@ -556,7 +556,7 @@ export default function App() {
             conversation_id: conversationId,
             message: value,
             agent_id: selectedAgent || undefined,
-            learner_profile: profile,
+            user_profile: profile,
             model: selectedModel || undefined,
             from_widget: options?.from_widget,
           },

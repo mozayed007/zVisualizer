@@ -1,13 +1,42 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import sqlite3
 import uuid
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Protocol
 
-from app.models.chat import ConversationRecord, LearnerProfile
+from app.models.chat import ConversationRecord, UserProfile
+
+logger = logging.getLogger(__name__)
+
+_CONVERSATIONS_SCHEMA = """
+CREATE TABLE IF NOT EXISTS conversations (
+    id TEXT PRIMARY KEY,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    turn_count INTEGER NOT NULL,
+    subject TEXT,
+    agent_id TEXT,
+    user_profile_json TEXT NOT NULL,
+    message_history_json TEXT
+)
+"""
+
+_EXPECTED_COLUMNS = frozenset(
+    {
+        "id",
+        "created_at",
+        "updated_at",
+        "turn_count",
+        "subject",
+        "agent_id",
+        "user_profile_json",
+        "message_history_json",
+    }
+)
 
 
 class ConversationRepository(Protocol):
@@ -24,25 +53,22 @@ def _connect(db_path: Path) -> sqlite3.Connection:
 
 
 def _init_schema_sync(conn: sqlite3.Connection) -> None:
-    conn.execute(
-        """
-        CREATE TABLE IF NOT EXISTS conversations (
-            id TEXT PRIMARY KEY,
-            created_at TEXT NOT NULL,
-            updated_at TEXT NOT NULL,
-            turn_count INTEGER NOT NULL,
-            subject TEXT,
-            agent_id TEXT,
-            learner_profile_json TEXT NOT NULL,
-            message_history_json TEXT
-        )
-        """
-    )
+    conn.execute(_CONVERSATIONS_SCHEMA)
     columns = {
         row["name"] for row in conn.execute("PRAGMA table_info(conversations)").fetchall()
     }
-    if "agent_id" not in columns:
-        conn.execute("ALTER TABLE conversations ADD COLUMN agent_id TEXT")
+    if columns != _EXPECTED_COLUMNS:
+        logger.warning(
+            "conversations_incompatible_schema_rebuild",
+            extra={
+                "extra_data": {
+                    "event": "conversations_incompatible_schema_rebuild",
+                    "found_columns": sorted(columns),
+                }
+            },
+        )
+        conn.execute("DROP TABLE conversations")
+        conn.execute(_CONVERSATIONS_SCHEMA)
     conn.commit()
 
 
@@ -54,7 +80,7 @@ def _parse_iso(dt: str) -> datetime:
 
 
 def _row_to_record(row: sqlite3.Row) -> ConversationRecord:
-    learner = LearnerProfile.model_validate_json(row["learner_profile_json"])
+    profile = UserProfile.model_validate_json(row["user_profile_json"])
     return ConversationRecord(
         id=row["id"],
         created_at=_parse_iso(row["created_at"]),
@@ -62,7 +88,7 @@ def _row_to_record(row: sqlite3.Row) -> ConversationRecord:
         turn_count=row["turn_count"],
         subject=row["subject"],
         agent_id=row["agent_id"],
-        learner_profile=learner,
+        user_profile=profile,
         message_history_json=row["message_history_json"],
     )
 
@@ -75,7 +101,7 @@ def _record_to_tuple(record: ConversationRecord) -> tuple:
         record.turn_count,
         record.subject,
         record.agent_id,
-        record.learner_profile.model_dump_json(),
+        record.user_profile.model_dump_json(),
         record.message_history_json,
     )
 
@@ -120,14 +146,14 @@ class SqliteConversationRepository:
                 """
                 INSERT INTO conversations (
                     id, created_at, updated_at, turn_count, subject,
-                    agent_id, learner_profile_json, message_history_json
+                    agent_id, user_profile_json, message_history_json
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(id) DO UPDATE SET
                     updated_at = excluded.updated_at,
                     turn_count = excluded.turn_count,
                     subject = excluded.subject,
                     agent_id = excluded.agent_id,
-                    learner_profile_json = excluded.learner_profile_json,
+                    user_profile_json = excluded.user_profile_json,
                     message_history_json = excluded.message_history_json
                 """,
                 _record_to_tuple(record),

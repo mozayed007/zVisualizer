@@ -222,7 +222,7 @@ class LiveDialogueService:
     def _build_system_instruction(self, *, agent_name: str) -> str:
         return "\n".join(
             [
-                "You are the realtime voice companion for a visual learning chat.",
+                "You are the realtime voice companion for a visual chat.",
                 "Speak naturally, warmly, and concisely.",
                 "Keep your replies brief while the user is talking live.",
                 (

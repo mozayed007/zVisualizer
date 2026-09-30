@@ -1,6 +1,6 @@
 # Visualizer Agent
 
-A visual learning companion powered by **PydanticAI** and **Google Gemini**. Ask naturally, learn visually, and stay in the same chat flow. The agent composes each conversational turn into a reasoning panel, a main answer card, and a final visuals section — instead of mirroring raw tool-call order.
+A visual companion agent powered by **PydanticAI** and **Google Gemini**. Ask naturally, see it visually, and stay in the same chat flow. The agent composes each conversational turn into a reasoning panel, a main answer card, and a final visuals section — instead of mirroring raw tool-call order.
 
 ## Architecture Overview
 
@@ -41,7 +41,7 @@ The backend loads two YAML-defined agents from `config/`:
 
 | Agent ID | Config | Purpose |
 |----------|--------|---------|
-| `visualizer` (default) | `agent.visual.yaml` | Educational SVG/HTML widgets via `show_widget(title, loading_messages, widget_code)` |
+| `visualizer` (default) | `agent.visual.yaml` | Explanatory SVG/HTML widgets via `show_widget(title, loading_messages, widget_code)` |
 | `svg` | `agent.svg.yaml` | Branded template population; `show_widget` also requires `template_id` (library relative path, e.g. `versus/compare.svg`) |
 
 Select an agent per chat request via `agent_id`. The SVG agent validates every `widget_code` clone against the source template before render. Template files live under `data/SVGs_Organized/`.
@@ -138,7 +138,7 @@ The widget receives a `WidgetPayload` object:
 ```typescript
 interface WidgetPayload {
   title: string              // snake_case identifier (e.g., "dense_vs_moe_architecture")
-  loading_messages: string[] // 1-4 learner-facing loading messages
+  loading_messages: string[] // 1-4 user-facing loading messages
   widget_code: string       // Raw SVG or HTML fragment
   kind: 'svg' | 'html'      // Visual type discriminator
 }
@@ -245,12 +245,12 @@ The agent behavior is configured through YAML:
 
 ```yaml
 agent:
-  name: visual-learning-companion
+  name: visual-companion
   provider: google-gla
   model: gemini-3.1-flash-lite-preview
   subject_area: computer science, mathematics, data, and systems thinking
-  learner_profile: motivated learners who benefit from visual intuition
-  tone: warm, direct, encouraging, and Socratic
+  audience: readers and builders who benefit from visual intuition
+  tone: warm, direct, encouraging, and candid
 
   tool:
     name: show_widget
@@ -297,7 +297,7 @@ The agent decides visual format based on content type:
 | Reference maps, architecture, containment | SVG | System architecture diagram |
 | Comparisons (static) | SVG | Side-by-side concept comparison |
 | Mechanisms without parameters | SVG | Illustrated process flow |
-| Parameter-driven systems | HTML | Learning rate slider affecting gradient descent |
+| Parameter-driven systems | HTML | Step size slider affecting gradient descent |
 | Staged/stepped processes | HTML | Step-through algorithm visualization |
 | Interactive controls needed | HTML | Adjustable frequency sine wave |
 
@@ -402,7 +402,7 @@ visualizer-agent/
 │   └── frontend/             # React + Vite frontend
 │       ├── src/
 │       │   ├── components/   # Chat UI + WidgetFrame
-│       │   ├── hooks/        # useTheme, useLearnerProfile
+│       │   ├── hooks/        # useTheme, useUserProfile
 │       │   ├── lib/          # chatApi, designTokens, svgExport, widgetBridge
 │       │   ├── App.tsx       # Main chat interface
 │       │   └── index.css     # Global styles
@@ -577,4 +577,4 @@ MIT License — feel free to use, modify, and distribute.
 
 - **PydanticAI** for the robust agent framework
 - **Google Gemini** for the underlying language model capabilities
-- **Claude** for visual design inspiration and pedagogical patterns
+- **Claude** for visual design inspiration and visual patterns

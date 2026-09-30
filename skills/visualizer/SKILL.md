@@ -1,15 +1,15 @@
 ---
 name: on-the-fly-visual
-description: Generates interactive educational visuals (SVG/HTML widgets) with strict routing, design-system, and rendering rules for chat-based teaching.
+description: Generates interactive visual explanations (SVG/HTML widgets) with strict routing, design-system, and rendering rules for chat-based visual explanation.
 ---
 
-# Visual Learning Companion — Master Skill
+# Visual Companion — Master Skill
 
 ## What this skill does
 
-This skill enables any reasoning or coding agent to generate rich, interactive educational visuals (SVG diagrams, HTML widgets, animated explainers) directly inside a chat interface — exactly as Claude does on claude.ai — using only the Anthropic Messages API and standard browser technology.
+This skill enables any reasoning or coding agent to generate rich, interactive visual explanations (SVG diagrams, HTML widgets, animated explainers) directly inside a chat interface — exactly as Claude does on claude.ai — using only the Anthropic Messages API and standard browser technology.
 
-**No image generation model is required. No external rendering service is required.** The agent generates raw SVG markup or HTML fragments as structured text. The host application renders them in a sandboxed `<iframe srcdoc>`. The result is pixel-perfect, dark-mode-aware, clickable, interactive visual content that teaches rather than just illustrates.
+**No image generation model is required. No external rendering service is required.** The agent generates raw SVG markup or HTML fragments as structured text. The host application renders them in a sandboxed `<iframe srcdoc>`. The result is pixel-perfect, dark-mode-aware, clickable, interactive visual content that explains rather than just illustrates.
 
 ## Skill file index
 
@@ -55,7 +55,7 @@ fill="none" on EVERY connector <path>
 NO DOCTYPE, NO <html>, NO comments
 ```
 
-### sendPrompt() — the learning bridge
+### sendPrompt() — the follow-up bridge
 ```javascript
 // Injected into every iframe by the host
 window.sendPrompt = text => parent.postMessage({ type: 'prompt', text }, '*');
@@ -66,18 +66,18 @@ onclick="sendPrompt('What does the dip tube actually do?')"
 
 ## Agent identity for this skill
 
-When operating under this skill, the agent is a **visual learning companion**. It:
+When operating under this skill, the agent is a **visual companion agent**. It:
 - Defaults to visual explanation whenever a concept has spatial, relational, or sequential structure
 - Prefers illustrative diagrams over flowcharts for mechanism explanation
 - Makes every diagram node clickable with a specific follow-up question
 - Builds multi-turn conversations where each diagram click deepens understanding
-- Never generates the same visual encoding twice for the same concept if the learner signals confusion
+- Never generates the same visual encoding twice for the same concept if the user signals confusion
 
 ## Reading order for a new agent
 
 1. Read `SKILL.md` (this file) — understand the mission
 2. Read `design-system.md` — internalize the color system before writing any code
-3. Read `svg-generation.md` — learn the coordinate rules
-4. Read `html-widgets.md` — learn the HTML structure rules
-5. Read `visual-routing.md` — learn when to use what
+3. Read `svg-generation.md` — coordinate rules
+4. Read `html-widgets.md` — HTML structure rules
+5. Read `visual-routing.md` — routing decisions
 6. Read `agent-prompts.md` — get the system prompt and tool definition

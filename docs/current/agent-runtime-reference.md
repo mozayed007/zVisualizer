@@ -7,7 +7,7 @@ description: Exact runtime reference for the visualizer agent, including identit
 
 ## What the agent is
 
-The agent in this repository is a **backend PydanticAI agent** that uses the **Gemini Developer API** through PydanticAI's Google integration, which is backed by the official `google-genai` SDK, to answer learner questions with:
+The agent in this repository is a **backend PydanticAI agent** that uses the **Gemini Developer API** through PydanticAI's Google integration, which is backed by the official `google-genai` SDK, to answer user questions with:
 
 - normal explanatory text
 - optionally one validated visual widget
@@ -30,21 +30,21 @@ The main runtime lives in:
 | `visualizer` | `config/agent.visual.yaml` | Yes |
 | `svg` | `config/agent.svg.yaml` | No |
 
-`AgentRegistry` compiles a separate system prompt per agent. Visualizer prompts include HTML/SVG educational rules. SVG prompts include template identity and `template_id` requirements only.
+`AgentRegistry` compiles a separate system prompt per agent. Visualizer prompts include HTML/SVG explanation rules. SVG prompts include template identity and `template_id` requirements only.
 
 ## Visualizer agent identity
 
 The visualizer identity comes from `config/agent.visual.yaml`:
 
-- Name: `visual-learning-companion`
+- Name: `visual-companion`
 - Provider: `google-gla`
 - Default configured model: `gemini-3.1-flash-lite-preview`
 - Subject area: `computer science, mathematics, data, and systems thinking`
-- Tone: `warm, direct, encouraging, and Socratic`
+- Tone: `warm, direct, encouraging, and candid`
 
 Response-style defaults:
 
-- ask at most one comprehension check question
+- ask at most one follow-up question
 - prefer a visual when it materially helps
 - never stack visuals without connecting prose
 
@@ -102,8 +102,8 @@ At runtime, the main chat agent can:
 
 - answer in plain text
 - decide whether a visual is needed
-- call `show_widget(...)` to emit one SVG or HTML teaching widget
-- update learner state like `concepts_seen`
+- call `show_widget(...)` to emit one SVG or HTML explanation widget
+- update user state like `topics_visualized`
 - stream text, reasoning, status, and widget events over SSE
 - recover if a visual was requested but the main pass failed to produce one
 
@@ -118,7 +118,7 @@ Both chat agents expose exactly **one tool** to the model:
 ### Visualizer (`agent_id=visualizer`)
 
 - `template_id` is ignored
-- `widget_code` must be raw SVG (educational contract) or raw HTML fragment
+- `widget_code` must be raw SVG (widget contract) or raw HTML fragment
 - Validated by `build_widget_payload` plus `svg_geometry_validator`
 - Failed raw SVG geometry may auto-repair via `svg_vision_repair_service.repair_raw_visualizer_svg`
 
@@ -162,7 +162,7 @@ This compiled prompt includes:
 - SVG rules
 - HTML widget rules
 - design-token rules
-- pedagogy rules
+- explanation rules
 - `show_widget` usage instructions
 - source-doc excerpts by default, or full `skills/visualizer/*.md` bodies when `AGENT_LOAD_FULL_SKILL_DOCS_ON_SESSION_START=true`
 - Google-specific thinking config with `include_thoughts=true` so Gemini reasoning deltas can stream when the model supports them
@@ -196,9 +196,9 @@ Important nuance:
 Injected at runtime in `ChatService.get_agent()`:
 
 - conversation subject
-- `concepts_seen`
-- `struggling_with`
-- learner `interaction_count`
+- `topics_visualized`
+- `unclear_topics`
+- user `interaction_count`
 - latest user message
 - `from_widget` if the user clicked a widget follow-up
 - whether the request heuristically requires a visual

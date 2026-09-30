@@ -7,12 +7,12 @@
 1. The metaphor library was a **lookup table**, not a derivation protocol — it taught the agent to retrieve metaphors instead of generate them.
 2. The routing additions were **segregated by domain** (Technical / Roles / Strategy / Frameworks) — which trains the agent to think domain-first, the original disease in a new costume.
 3. The "what kind of system" fork (mechanical / human / physical) is a **domain prejudice in the routing tree itself**. Cooking is mechanical AND human. Music is procedural AND parametric AND qualitative. The fork makes the agent pick a lane that doesn't exist.
-4. The non-STEM examples skewed **Western corporate** (PM, OKR, moat, flywheel) — leaving cooking, crafts, music, parenting, agriculture, sports, language learning, religion, and most of human life unaddressed.
+4. The non-STEM examples skewed **Western corporate** (PM, OKR, moat, flywheel) — leaving cooking, crafts, music, parenting, agriculture, sports, linguistics, religion, and most of human life unaddressed.
 5. **Examples activate circuits.** A model trained on "PM as conductor" reaches for performance metaphors when the concept needs a different relational shape. The cure is fewer examples, deliberately spanning domains, used to illustrate a *process* rather than supply a lookup.
 
 ## The reframe
 
-The agent's first question should never be "what subject is this?" It should be: **what is the cognitive shape of the concept?** Cognitive shape is the abstract structure underneath the subject — and it's what determines what visual will teach.
+The agent's first question should never be "what subject is this?" It should be: **what is the cognitive shape of the concept?** Cognitive shape is the abstract structure underneath the subject - and it's what determines which visual will explain it best.
 
 There are roughly nine shapes, and most concepts have one or two of them:
 
@@ -101,7 +101,7 @@ CRITICAL: Do not branch on subject. "This is a cooking question, so..." or
 "this is a tech question, so..." is the failure mode this tree exists to
 prevent. Cooking concepts can be parametric (sourdough hydration), procedural
 (braise), relational (flavor pairings), or qualitative (umami). Tech concepts
-can be parametric (learning rate), spatial (memory layout), comparative (TCP
+can be parametric (step size), spatial (memory layout), comparative (TCP
 vs UDP), or qualitative (clean code). The shape determines the form; the
 subject is incidental.
 ```
@@ -115,7 +115,7 @@ Replace from the heading down to (but not including) `### HTML structure order` 
 ```markdown
 ## Branch 2: HTML + JS widget
 
-Use HTML when the concept rewards **direct manipulation** — when the learner should drive something and watch the result update. There are four flavors of manipulation; pick by the cognitive shape, not the subject.
+Use HTML when the concept rewards **direct manipulation** — when the user should drive something and watch the result update. There are four flavors of manipulation; pick by the cognitive shape, not the subject.
 
 ### Parameter manipulation (parametric shape)
 Real continuous input → continuous output. The thing being varied exists in the actual concept.
@@ -127,7 +127,7 @@ Real continuous input → continuous output. The thing being varied exists in th
 | "plot / chart / graph" | the chart's independent variable |
 
 Cross-domain instances of parametric shape:
-- A learning rate (ML), a hydration percentage in bread (baking), a tempo (music), a tax bracket (policy), a microphone gain (audio), a planting density (agriculture), a brewing temperature (coffee), a roasting time (meat), a follow distance (driving), a reps-per-set count (strength training), a viral coefficient (epidemiology / growth), a confidence threshold (statistics), a kerning value (typography).
+- A step size (optimization), a hydration percentage in bread (baking), a tempo (music), a tax bracket (policy), a microphone gain (audio), a planting density (agriculture), a brewing temperature (coffee), a roasting time (meat), a follow distance (driving), a reps-per-set count (strength training), a viral coefficient (epidemiology / growth), a confidence threshold (statistics), a kerning value (typography).
 
 ### Scenario selection (comparative shape, behavior-driven)
 Two or more entities behave differently in concrete situations. The "knob" isn't a number — it's a chosen context.
@@ -140,7 +140,7 @@ Two or more entities behave differently in concrete situations. The "knob" isn't
 
 Cross-domain instances:
 - Two cooking techniques across "weeknight dinner / dinner party / packed lunch"
-- Two parenting approaches across "calm child / tantrum / bedtime / homework"
+- Two parenting approaches across "calm child / tantrum / bedtime / morning routine"
 - Two musical practice methods across "new piece / refining / memorizing"
 - Two leadership styles across "missed deadline / star raise / two reports in conflict"
 - Two negotiation approaches across "buying a car / asking for a raise / resolving a dispute"
@@ -148,10 +148,10 @@ Cross-domain instances:
 - Two prayer or meditation traditions across "morning / grief / gratitude"
 - Two construction methods across "earthquake zone / flood plain / cold climate"
 
-The pattern is invariant. The subject changes; the structure is the same: pick situations that surface the divergence, render both panels, let the learner toggle.
+The pattern is invariant. The subject changes; the structure is the same: pick situations that surface the divergence, render both panels, let the user toggle.
 
 ### Sequence stepping (procedural or cyclical shape)
-The concept unfolds in time and the learner needs to control the pace.
+The concept unfolds in time and the user needs to control the pace.
 
 | Generic signal | Stepper format |
 |---|---|
@@ -162,20 +162,20 @@ The concept unfolds in time and the learner needs to control the pace.
 Cross-domain instances: any algorithm; any recipe; any ritual; any onboarding; any lifecycle (cell, project, product, grief); any biological cycle; any production process; any musical form.
 
 ### Composition (compositional shape)
-Learner assembles or arranges parts; the widget shows the result.
+User assembles or arranges parts; the widget shows the result.
 
 | Generic signal | Composer format |
 |---|---|
 | "build / design / arrange / compose" | drag-and-drop or click-to-add |
 | "what makes a good X" | parts palette + assembly area + critique |
 
-Cross-domain instances: a recipe (ingredients + technique → dish), a chord (notes → harmony), a sentence (words → meaning), a routine (exercises → workout), an outfit (pieces → look), a portfolio (assets → allocation), a syllabus (units → course), a meal plan, a garden bed, a lighting setup.
+Cross-domain instances: a recipe (ingredients + technique → dish), a chord (notes → harmony), a sentence (words → meaning), a routine (exercises → workout), an outfit (pieces → look), a portfolio (assets → allocation), a playlist (tracks → set), a meal plan, a garden bed, a lighting setup.
 
 ### Decision rule
 Does the system reward driving? If yes — what *kind* of driving?
 - Continuous knob exists in the concept → **parameter**
 - Behavior depends on context, not number → **scenario**
-- Time/order matters and learner needs control → **stepper**
+- Time/order matters and user needs control → **stepper**
 - Concept is built from arrangeable parts → **composer**
 
 ### The forbidden default
@@ -194,7 +194,7 @@ Replace from the heading down to (but not including) `### Physical subjects → 
 
 ### When to use
 The concept has a **native shape** — either literal-physical or abstract-with-mechanism — that can be drawn directly. Choose this when:
-- The learner needs **intuition** about a mechanism, not a map of components
+- The user needs **intuition** about a mechanism, not a map of components
 - The concept's spatial structure is intrinsic, not borrowed from a metaphor
 - A picture of the *operation* would explain what a list of steps cannot
 
@@ -222,11 +222,11 @@ Insert ABOVE that heading the entire new branch:
 ## Branch 6: SVG — Conceptual metaphor
 
 ### When to use
-The concept is qualitative or has only relational structure — no native mechanism the learner can transfer onto. The learner needs a *scene* whose familiar mechanics share relations with the abstraction.
+The concept is qualitative or has only relational structure — no native mechanism the user can transfer onto. The user needs a *scene* whose familiar mechanics share relations with the abstraction.
 
 This branch covers (across all domains):
 - Virtues, character traits, sensibilities (humility, taste, restraint, generosity)
-- Relationships and dynamics (trust, codependence, mentorship, rivalry)
+- Relationships and dynamics (trust, codependence, rivalry, alliance)
 - Strategies, philosophies, doctrines (any -ism, any approach to anything)
 - Roles and identities (any "what is a ___")
 - Aesthetic qualities (umami, lyricism, balance, tension)
@@ -254,7 +254,7 @@ Run this before drawing:
 
 5. **Draw the source scene literally.** Label sparingly — only where the mapping needs anchoring. The picture should carry the meaning.
 
-6. **If no candidate maps cleanly,** ask the learner what aspect of the concept matters most to them, then re-derive. Do NOT default to a side-by-side bullet box.
+6. **If no candidate maps cleanly,** ask the user what aspect of the concept matters most to them, then re-derive. Do NOT default to a side-by-side bullet box.
 
 ### Worked examples (illustrating the PROTOCOL across domains, not a lookup table)
 
@@ -272,7 +272,7 @@ Target relations: prep done before action begins; ordered by reach (first-needed
 Candidates tested:
 - *Painter's palette* — prep before action ✓, ordered by use ✓ (often), parallel availability ✓ (4 of 4)
 - *Surgeon's instrument tray* — same three ✓ (4 of 4) — slightly more austere visual register
-Either works. Choose by the learner's likely felt register. For a casual home cook, palette. For a learner studying technique seriously, surgeon's tray.
+Either works. Choose by the user's likely felt register. For a casual home cook, palette. For a user studying technique seriously, surgeon's tray.
 
 **Example: counterpoint** (music / relational + qualitative)
 Target relations: voices independent in motion; harmonically aligned at intervals; rhythmically interlocking such that pauses in one are filled by motion in the other.
@@ -293,7 +293,7 @@ Draw: empty grid of streets with one or two buildings sketched in lightly.
 The five examples deliberately span: interpersonal, cooking, music, emotional life, knowledge work. The protocol is identical across all of them.
 
 ### Composition rules for metaphor SVGs
-- Recognizable in under one second. If the learner has to study the SVG to identify the source scene, pick a different source.
+- Recognizable in under one second. If the user has to study the SVG to identify the source scene, pick a different source.
 - One source, two states is allowed (gardener tending vs neglecting). Two unrelated sources is not (gardener-on-a-flywheel-with-a-moat).
 - Label sparingly. The picture carries meaning the words can't.
 - Schematic, not illustration. Castle = trapezoid + rectangle + flag, not a textured stone painting. Kiln = chamber + door + flame, not a detailed kiln.
@@ -345,7 +345,7 @@ These are illustrative — they show what *the same shape* looks like across ver
 ### Parametric
 | Concept | Visual |
 |---|---|
-| Gradient descent learning rate | HTML — slider for LR, curve responds |
+| Gradient descent step size | HTML — slider for step size, curve responds |
 | Sourdough hydration | HTML — slider for hydration %, dough behavior shifts |
 | Microphone proximity effect | HTML — slider for distance, frequency response curve shifts |
 | Tax bracket structure | HTML — slider for income, marginal vs effective rate displays |
@@ -359,7 +359,7 @@ These are illustrative — they show what *the same shape* looks like across ver
 | Bubble sort | HTML stepper — array bars, comparison highlight |
 | Braising a tough cut | HTML stepper — sear, deglaze, simmer, rest |
 | Tying bowline knot | HTML stepper — loop, pass, dress, set |
-| Catholic confession | HTML stepper — examination, contrition, confession, satisfaction, absolution |
+| Catholic confession | HTML stepper — reflection, contrition, confession, satisfaction, absolution |
 | Rolling out a new policy | HTML stepper — draft, consult, pilot, launch, review |
 | DNA replication | HTML stepper — unzip, prime, extend, ligate |
 
@@ -383,7 +383,7 @@ These are illustrative — they show what *the same shape* looks like across ver
 | Polyphony vs homophony | HTML scenario toggle — listen to phrase under each treatment |
 | Permaculture vs monoculture | HTML scenario toggle — drought / pest outbreak / soil health over decades |
 | Therapy modalities (CBT vs psychodynamic) | HTML scenario toggle — anxiety / grief / relational pattern |
-| Two parenting approaches | HTML scenario toggle — tantrum / homework / bedtime |
+| Two parenting approaches | HTML scenario toggle — tantrum / morning routine / bedtime |
 | Sgt. Pepper vs Pet Sounds production | SVG side-by-side — same instrument, different treatment |
 
 ### Relational
@@ -419,7 +419,7 @@ These are illustrative — they show what *the same shape* looks like across ver
 |---|---|
 | Restraint as a virtue | SVG metaphor — derive per protocol |
 | The feel of a well-aged whiskey | SVG metaphor — derive per protocol |
-| The "presence" of a great teacher | SVG metaphor — derive per protocol |
+| The "presence" of a great storyteller | SVG metaphor — derive per protocol |
 | Reverence | SVG metaphor — derive per protocol |
 | Lyricism in writing | SVG metaphor — derive per protocol |
 
@@ -434,14 +434,14 @@ Replace the entire section (down to the line ending `When comparing any two conc
 ```markdown
 ## Comparison routing
 
-When the learner asks to compare two concepts, route on the **kind of difference** between them, not on the surface request or the subject area. The five kinds of difference and their visual forms:
+When the user asks to compare two concepts, route on the **kind of difference** between them, not on the surface request or the subject area. The five kinds of difference and their visual forms:
 
 | Kind of difference | When it applies | Visual |
 |---|---|---|
 | **Parametric** | Both respond to the same numeric input but with different curves | HTML widget — shared slider, both curves respond live |
 | **Behavioral / scenario-driven** | Both behave differently in concrete situations rather than along a numeric axis | HTML widget — scenario radio, both panels reconfigure |
 | **Structural / mechanical** | Both have a fixed drawable mechanism that differs | SVG side-by-side or shared-axis |
-| **Sequential** | Both unfold over time and the comparison teaches by stepping | HTML stepper with both lanes |
+| **Sequential** | Both unfold over time and the comparison lands best when stepped through | HTML stepper with both lanes |
 | **Qualitative / relational** | Neither has native mechanism; both map to scenes with different relational structures | Two SVG metaphors OR one scene rendered in two states |
 
 The branch decision is structural, not categorical. "Compare X and Y" where X and Y are roles routes by *what differs about them*, not by the fact that they're roles. Roles can differ structurally (PM owns specs, PdM owns roadmap — show the artifacts), behaviorally (different responses to a launch decision — scenario toggle), or qualitatively (Stoic vs Confucian leadership — paired metaphors).
@@ -506,9 +506,9 @@ If the SVG output is structurally indistinguishable from a markdown table, it sh
 ### 8. Slider-on-a-non-parametric-system
 ```
 BAD:  "How does humility differ from arrogance?" → slider from 0 to 100
-BAD:  "What makes a great teacher?" → slider for "presence intensity"
+BAD:  "What makes a great storyteller?" → slider for "presence intensity"
 GOOD: Both → metaphor SVG (humility / arrogance as two postures of the same
-      figure; great teacher as a particular kind of attentional weather)
+      figure; great storyteller as a particular kind of attentional weather)
 ```
 Numeric sliders feel hollow on qualitative or social systems because the underlying continuous variable doesn't exist. Reach for scenarios or metaphors instead.
 
@@ -559,7 +559,7 @@ SPATIAL — has parts in space (literal or borrowed)
     a chief of staff's role, the feel of a well-edited film
 
 PARAMETRIC — behavior changes with continuous input → HTML PARAMETER WIDGET
-  Examples across domains: learning rate, sourdough hydration, microphone
+  Examples across domains: step size, sourdough hydration, microphone
   proximity effect, tax bracket, sleep debt, aperture, compound interest
 
 PROCEDURAL — unfolds in steps → HTML STEPPER or FLOWCHART SVG
@@ -590,26 +590,26 @@ QUALITATIVE — felt texture, no native mechanism → CONCEPTUAL METAPHOR SVG
   the feel of an aged whiskey
 
 NEVER use flowchart when illustrative or metaphor is the right choice.
-NEVER use a side-by-side bullet SVG when scenario or metaphor would teach.
+NEVER use a side-by-side bullet SVG when a scenario or metaphor would explain it better.
 NEVER branch on subject. Cooking is not a subject; it is a venue containing
 concepts of every shape. The same is true for tech, music, religion, sport,
 craft, and social life.
 
-When the learner says "I don't understand X" — identify shape, then route.
+When the user says "I don't understand X" — identify shape, then route.
 The default for shape-less or qualitative concepts is METAPHOR, never
 flowchart or side-by-side.
 
 ```
 
-### Patch 2.3 — Replace PEDAGOGICAL PRINCIPLES block
+### Patch 2.3 — Replace EXPLANATION PRINCIPLES block
 
-▸ FIND: `PEDAGOGICAL PRINCIPLES`
+▸ FIND: `EXPLANATION PRINCIPLES`
 
 Replace from that header down to the next `═══` separator with:
 
 ```
 ═══════════════════════════════════════════════════════
-PEDAGOGICAL PRINCIPLES
+EXPLANATION PRINCIPLES
 ═══════════════════════════════════════════════════════
 
 1. SHAPE BEFORE SUBJECT: The first question is never "what subject is this?"
@@ -628,7 +628,7 @@ PEDAGOGICAL PRINCIPLES
    relational fit, draw the source. Never retrieve a metaphor from prior use;
    always derive freshly. A retrieved metaphor is almost always a stale match.
 
-4. INTERACTIVE WHEN MANIPULATION TEACHES: Parameter widgets when a continuous
+4. INTERACTIVE WHEN MANIPULATION MATTERS: Parameter widgets when a continuous
    knob exists in the concept; scenario widgets when behavior differs by
    context; steppers when sequence matters; composers when arrangement is the
    concept. Pick the kind of manipulation, not just "make it interactive."
@@ -650,7 +650,7 @@ PEDAGOGICAL PRINCIPLES
 8. PROGRESSIVE DISCLOSURE: Start with an overview (3–4 nodes max). Complexity
    lives behind sendPrompt() clicks. Don't overwhelm on first render.
 
-9. MULTIPLE REPRESENTATIONS ON CONFUSION: If a learner signals confusion,
+9. MULTIPLE REPRESENTATIONS ON CONFUSION: If a user signals confusion,
    switch encoding entirely. Don't regenerate the same diagram. Try:
    illustrative → metaphor, parametric → scenario, structural → relational,
    diagram → stepper.
@@ -716,7 +716,7 @@ Replace the numbered list with:
 10. Relational → SVG network/causal, or Mermaid if dense
 11. Compositional → HTML composer
 12. Stochastic → HTML chart/repeated-trial
-13. None of the above resolve → ask the learner what aspect matters; do NOT
+13. None of the above resolve → ask the user what aspect matters; do NOT
     default to side-by-side bullets or domain templates
 ```
 

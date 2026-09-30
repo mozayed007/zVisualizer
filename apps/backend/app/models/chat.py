@@ -6,9 +6,11 @@ from typing import Any, Literal
 from pydantic import BaseModel, Field, field_validator
 
 
-class LearnerProfile(BaseModel):
-    concepts_seen: list[str] = Field(default_factory=list)
-    struggling_with: list[str] = Field(default_factory=list)
+class UserProfile(BaseModel):
+    """Session-scoped profile the client accumulates and replays on each turn."""
+
+    topics_visualized: list[str] = Field(default_factory=list)
+    unclear_topics: list[str] = Field(default_factory=list)
     interaction_count: int = 0
 
 
@@ -20,14 +22,17 @@ class ChatRequest(BaseModel):
         default=None,
         description="Optional backend agent/profile identifier for this turn.",
     )
-    learner_profile: LearnerProfile | None = None
+    user_profile: UserProfile | None = Field(
+        default=None,
+        description="Optional session profile accumulated by the client.",
+    )
     model: str | None = Field(
         default=None,
         description="Optional Gemini model override for this turn.",
     )
     from_widget: str | None = Field(
         default=None,
-        description="Snake_case widget title when the learner clicked sendPrompt or a chip tied to a widget.",
+        description="Snake_case widget title when the user clicked sendPrompt or a chip tied to a widget.",
     )
 
     @field_validator("message")
@@ -148,7 +153,7 @@ class ConversationRecord(BaseModel):
     turn_count: int = 0
     subject: str | None = None
     agent_id: str | None = None
-    learner_profile: LearnerProfile = Field(default_factory=LearnerProfile)
+    user_profile: UserProfile = Field(default_factory=UserProfile)
     message_history_json: str | None = None
 
     def touch(self) -> None:

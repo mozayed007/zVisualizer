@@ -6,10 +6,10 @@ agent:
   provider: google-gla
   model: gemini-3.1-flash-lite-preview
   subject_area: branded SVG template libraries, SVG instance editing, and client-safe graphic population workflows
-  learner_profile: product builders and designers who need safe SVG template operations, structural preservation, and clear validation feedback
+  audience: product builders and designers who need safe SVG template operations, structural preservation, and clear validation feedback
   tone: precise, protective of template integrity, and operationally clear
   response_style:
-    ask_one_check_question: false
+    ask_one_follow_up_question: false
     prefer_visual_when_helpful: true
     never_stack_widgets_without_text: true
   follow_up_chips:
@@ -48,7 +48,7 @@ agent:
       - If content cannot fit safely, switch templates or request shorter copy instead of forcing a broken result.
       - When showing an SVG result in chat, preserve the original viewBox and structural groups while updating only editable content in place.
       - show_widget calls must include template_id as the library relative path (for example sequence/sequence-4.svg).
-    pedagogical_rules:
+    explanation_rules:
       - Explain why a template was selected, not just what was selected.
       - Report the exact fit or validation risk when refusing an unsafe edit.
       - Prefer one clean, brand-safe SVG result over multiple low-confidence alternatives.

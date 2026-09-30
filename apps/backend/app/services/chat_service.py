@@ -188,20 +188,20 @@ class ChatService:
 
         @built_agent.instructions
         async def build_session_context(ctx: RunContext[AgentDependencies]) -> str:
-            learner_profile = ctx.deps.conversation.learner_profile
-            concepts_seen = ", ".join(learner_profile.concepts_seen) or "none"
-            struggling_with = ", ".join(learner_profile.struggling_with) or "none"
+            user_profile = ctx.deps.conversation.user_profile
+            topics_visualized = ", ".join(user_profile.topics_visualized) or "none"
+            unclear_topics = ", ".join(user_profile.unclear_topics) or "none"
             disallowed_hosts = self._extract_disallowed_url_hosts(ctx.deps.user_message)
             lines = [
                 f"Conversation subject: {ctx.deps.conversation.subject or 'general'}.",
-                f"Concepts already visualized: {concepts_seen}.",
-                f"Struggling topics: {struggling_with}.",
-                f"Interaction count: {learner_profile.interaction_count}.",
-                f"Latest learner request: {ctx.deps.user_message}",
+                f"Topics already visualized: {topics_visualized}.",
+                f"Unclear topics: {unclear_topics}.",
+                f"Interaction count: {user_profile.interaction_count}.",
+                f"Latest user request: {ctx.deps.user_message}",
             ]
             if self.settings.google_enable_url_context:
                 lines.append(
-                    "If the learner asks what a link says, use the URL context tool for allowed domains. "
+                    "If the user asks what a link says, use the URL context tool for allowed domains. "
                     "If a URL domain is not allowed, explicitly say it is outside the allowlist and ask for "
                     "an allowlisted source or domain override."
                 )
@@ -217,12 +217,12 @@ class ChatService:
                 )
             if ctx.deps.from_widget:
                 lines.append(
-                    f"The learner is following up from the '{ctx.deps.from_widget}' visual; "
+                    f"The user is following up from the '{ctx.deps.from_widget}' visual; "
                     "treat their message in that context."
                 )
             if ctx.deps.wants_visual:
                 lines.append(
-                    "The learner explicitly requested a visual. You must call "
+                    "The user explicitly requested a visual. You must call "
                     "show_widget at least once before finishing unless it is impossible."
                 )
             if ctx.deps.agent_id == "svg":
@@ -350,9 +350,9 @@ class ChatService:
                     ) from exc
 
             ctx.deps.last_visual_error = None
-            learner_profile = ctx.deps.conversation.learner_profile
-            if payload.title not in learner_profile.concepts_seen:
-                learner_profile.concepts_seen.append(payload.title)
+            user_profile = ctx.deps.conversation.user_profile
+            if payload.title not in user_profile.topics_visualized:
+                user_profile.topics_visualized.append(payload.title)
 
             await ctx.deps.event_sink.emit(
                 "widget_ready",
@@ -481,10 +481,10 @@ class ChatService:
         agent_bundle = self.agent_registry.get(deps.agent_id)
         context_agent = self.get_context_agent(agent_bundle, model_name)
         prompt = (
-            "Gather external context for the learner request. "
+            "Gather external context for the user request. "
             "Return concise bullet points with citations/domains where possible. "
             "If any URL is blocked by allowlist, include that explicitly.\n\n"
-            f"Learner request:\n{user_message}"
+            f"User request:\n{user_message}"
         )
         try:
             result = await context_agent.run(
@@ -535,12 +535,12 @@ class ChatService:
 
         @built_agent.instructions
         async def build_visual_context(ctx: RunContext[AgentDependencies]) -> str:
-            learner_profile = ctx.deps.conversation.learner_profile
-            concepts_seen = ", ".join(learner_profile.concepts_seen[-6:]) or "none"
+            user_profile = ctx.deps.conversation.user_profile
+            topics_visualized = ", ".join(user_profile.topics_visualized[-6:]) or "none"
             lines = [
                 f"Conversation subject: {ctx.deps.conversation.subject or 'general'}.",
-                f"Concepts already visualized: {concepts_seen}.",
-                f"Latest learner request: {ctx.deps.user_message}",
+                f"Topics already visualized: {topics_visualized}.",
+                f"Latest user request: {ctx.deps.user_message}",
             ]
             if ctx.deps.from_widget:
                 lines.append(f"Follow-up concerns widget '{ctx.deps.from_widget}' — align the visual with that.")
@@ -548,9 +548,9 @@ class ChatService:
                 [
                     "Produce exactly one high-quality visual payload.",
                     "Prefer SVG for static architecture/containment diagrams; prefer HTML when "
-                    "the concept has real parameters the learner should explore.",
+                    "the concept has real parameters the user should explore.",
                     "For comparisons: use HTML widgets when both concepts have tunable parameters "
-                    "(sliders would teach); use SVG when comparing fixed structures without "
+                    "(sliders explain more); use SVG when comparing fixed structures without "
                     "meaningful parameters to vary.",
                 ]
             )
@@ -1060,15 +1060,15 @@ class ChatService:
 
         conversation.subject = request.subject or conversation.subject
         conversation.agent_id = agent_id
-        conversation.learner_profile.interaction_count += 1
-        if self.settings.enable_learner_profiles and request.learner_profile is not None:
-            conversation.learner_profile = request.learner_profile
+        conversation.user_profile.interaction_count += 1
+        if self.settings.enable_user_profiles and request.user_profile is not None:
+            conversation.user_profile = request.user_profile
 
         lowered_message = request.message.lower()
         if any(
             phrase in lowered_message for phrase in ("i still don't get", "i dont get", "confused", "not understanding")
         ):
-            conversation.learner_profile.struggling_with.append(request.message[:80])
+            conversation.user_profile.unclear_topics.append(request.message[:80])
 
     def _follow_up_chips(self, had_widget: bool, agent_config: AgentConfig) -> list[str]:
         if had_widget:
@@ -1165,7 +1165,7 @@ class ChatService:
             "You must recover the missed visual from the previous turn. "
             "Call show_widget exactly once. "
             "Do not explain in prose. "
-            "Generate one learner-friendly visual that directly answers this request: "
+            "Generate one user-friendly visual that directly answers this request: "
             f"{request.message}"
         )
 
@@ -1391,9 +1391,9 @@ class ChatService:
                     if repaired_widget is None:
                         raise
 
-                    learner_profile = deps.conversation.learner_profile
-                    if repaired_widget.title not in learner_profile.concepts_seen:
-                        learner_profile.concepts_seen.append(repaired_widget.title)
+                    user_profile = deps.conversation.user_profile
+                    if repaired_widget.title not in user_profile.topics_visualized:
+                        user_profile.topics_visualized.append(repaired_widget.title)
                     events.append(
                         StreamEvent(
                             type="status",
@@ -1419,9 +1419,9 @@ class ChatService:
                     )
                     return events
 
-                learner_profile = deps.conversation.learner_profile
-                if library_result.widget.title not in learner_profile.concepts_seen:
-                    learner_profile.concepts_seen.append(library_result.widget.title)
+                user_profile = deps.conversation.user_profile
+                if library_result.widget.title not in user_profile.topics_visualized:
+                    user_profile.topics_visualized.append(library_result.widget.title)
                 events.append(
                     StreamEvent(
                         type="status",
@@ -1450,9 +1450,9 @@ class ChatService:
             agent = self.get_visual_agent(agent_bundle, model_name)
             result = await agent.run(
                 (
-                    "Generate one widget payload for this learner request. "
+                    "Generate one widget payload for this user request. "
                     "Return only the structured widget fields.\n\n"
-                    f"Learner request: {request.message}"
+                    f"User request: {request.message}"
                 ),
                 deps=deps,
             )
@@ -1489,9 +1489,9 @@ class ChatService:
                         },
                     )
                 )
-            learner_profile = deps.conversation.learner_profile
-            if payload.title not in learner_profile.concepts_seen:
-                learner_profile.concepts_seen.append(payload.title)
+            user_profile = deps.conversation.user_profile
+            if payload.title not in user_profile.topics_visualized:
+                user_profile.topics_visualized.append(payload.title)
             events.append(
                 StreamEvent(
                     type="widget_ready",

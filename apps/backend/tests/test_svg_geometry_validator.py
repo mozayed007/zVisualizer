@@ -25,7 +25,7 @@ def test_text_horizontal_overflow_is_flagged() -> None:
         # rect only 120px wide but the label needs far more.
         "<rect x='400' y='40' width='120' height='48'/>"
         "<text class='th' x='460' y='64' text-anchor='middle' dominant-baseline='central'>"
-        "Learns to route each token to the best expert"
+        "Routes each token to the best expert"
         "</text>"
         "</g>"
         "</svg>"

@@ -22,7 +22,7 @@ def test_agent_config_loads_source_docs() -> None:
     assert config.agent.model.startswith("gemini-3")
     assert len(config.agent.source_docs) >= 3
     assert config.agent.prompt_contract.source_docs_are_mandatory is True
-    assert "claude.ai educational visuals" in config.agent.prompt_contract.target_quality_bar
+    assert "claude.ai visual explanations" in config.agent.prompt_contract.target_quality_bar
 
 
 def test_system_prompt_uses_distilled_runtime_rules() -> None:

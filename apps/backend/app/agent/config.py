@@ -16,7 +16,7 @@ class AgentDocReference(BaseModel):
 
 
 class ResponseStyleConfig(BaseModel):
-    ask_one_check_question: bool = True
+    ask_one_follow_up_question: bool = True
     prefer_visual_when_helpful: bool = True
     never_stack_widgets_without_text: bool = True
 
@@ -39,12 +39,12 @@ class PromptContractConfig(BaseModel):
     enforce_platform_requirements: bool = True
     never_treat_skill_docs_as_optional: bool = True
     visual_requests_require_tool_call: bool = True
-    target_quality_bar: str = "Match the polish, clarity, and beauty of the best claude.ai educational visuals."
+    target_quality_bar: str = "Match the polish, clarity, and beauty of the best claude.ai visual explanations."
     mandatory_skill_loading_rule: str = (
         "Load all skill files before generating any visual output. Each file is load-bearing."
     )
     mandatory_visual_rules: list[str] = Field(default_factory=list)
-    pedagogical_rules: list[str] = Field(default_factory=list)
+    explanation_rules: list[str] = Field(default_factory=list)
 
 
 class AgentDefinition(BaseModel):
@@ -55,7 +55,7 @@ class AgentDefinition(BaseModel):
     provider: str
     model: str
     subject_area: str
-    learner_profile: str
+    audience: str
     tone: str
     response_style: ResponseStyleConfig
     follow_up_chips: FollowUpChipConfig

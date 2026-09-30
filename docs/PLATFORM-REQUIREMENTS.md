@@ -2,7 +2,7 @@
 
 ## Purpose
 
-This document specifies everything a development team must build to host the visual learning companion agent. It is separate from the skill documents because it describes the **host application infrastructure**, not the agent's behavior.
+This document specifies everything a development team must build to host the visual companion agent. It is separate from the skill documents because it describes the **host application infrastructure**, not the agent's behavior.
 
 **Rule:** The agent generates code. This platform renders it. These two layers are strictly separated. The agent has no knowledge of the host application's internals — only the design token contracts specified in `design-system.md`.
 
@@ -242,8 +242,8 @@ window.addEventListener('message', event => {
   switch (event.data?.type) {
 
     case 'prompt':
-      // Learner clicked a sendPrompt() node
-      handleLearnerPrompt({
+      // User clicked a sendPrompt() node
+      handleFollowUpPrompt({
         text: event.data.text,
         fromWidget: event.data.widgetTitle
       });
@@ -266,7 +266,7 @@ window.addEventListener('message', event => {
       break;
 
     case 'widget_interaction':
-      // Optional: track learner interactions for analytics
+      // Optional: track user interactions for analytics
       trackInteraction({
         widgetTitle: event.data.widgetTitle,
         element: event.data.element,
@@ -308,7 +308,7 @@ function renderFollowUpChips(responseContext, chatContainer) {
     chip.textContent = text;
     chip.onclick = () => {
       row.remove(); // remove chips after selection
-      handleLearnerPrompt({ text });
+      handleFollowUpPrompt({ text });
     };
     row.appendChild(chip);
   });
@@ -348,7 +348,7 @@ Request body:
 {
   "messages": [...],          // Full conversation history (array of role/content pairs)
   "subject": "string",        // Optional: subject area for system prompt selection
-  "learnerProfile": {...}     // Optional: accumulated learner profile data
+  "userProfile": {...}     // Optional: accumulated user profile data
 }
 
 Response:
@@ -366,7 +366,7 @@ const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const router = express.Router();
 
 router.post('/chat', async (req, res) => {
-  const { messages, subject, learnerProfile } = req.body;
+  const { messages, subject, userProfile } = req.body;
 
   // Validate input
   if (!Array.isArray(messages) || messages.length === 0) {
@@ -379,8 +379,8 @@ router.post('/chat', async (req, res) => {
     return res.status(429).json({ error: 'Rate limit exceeded', retryAfter: 60 });
   }
 
-  // Build system prompt from learner profile
-  const systemPrompt = buildSystemPrompt(subject, learnerProfile);
+  // Build system prompt from user profile
+  const systemPrompt = buildSystemPrompt(subject, userProfile);
 
   // Set up SSE
   res.writeHead(200, {
@@ -450,7 +450,7 @@ async def chat(request: Request):
         with client.messages.stream(
             model="claude-sonnet-4-20250514",
             max_tokens=8192,
-            system=build_system_prompt(body.get("subject"), body.get("learnerProfile")),
+            system=build_system_prompt(body.get("subject"), body.get("userProfile")),
             tools=[SHOW_WIDGET_TOOL],
             messages=messages
         ) as stream:
@@ -507,7 +507,7 @@ function truncateHistory(messages, maxTokens) {
 {
   id: 'conv_abc123',
   userId: 'user_xyz',
-  subject: 'machine_learning',
+  subject: 'optimization',
   createdAt: '2025-01-15T10:00:00Z',
   updatedAt: '2025-01-15T11:30:00Z',
   messages: [
@@ -534,16 +534,16 @@ function truncateHistory(messages, maxTokens) {
       timestamp: '2025-01-15T10:00:05Z'
     }
   ],
-  learnerProfile: {
-    conceptsSeen: ['attention_mechanism', 'transformer_architecture'],
-    strugglingWith: [],
+  userProfile: {
+    topicsVisualized: ['attention_mechanism', 'transformer_architecture'],
+    unclearTopics: [],
     interactionCount: 12
   }
 }
 ```
 
 **Storage recommendations:**
-- PostgreSQL (JSONB column for messages) — best for structured queries on learner data
+- PostgreSQL (JSONB column for messages) — best for structured queries on user data
 - MongoDB — easiest for schema-flexible message storage
 - Redis — cache recent conversation turns for fast retrieval (TTL: 24 hours)
 
@@ -583,10 +583,10 @@ const EVENTS = {
   WIDGET_CLICKED: 'widget.node_clicked',        // { widgetTitle, promptText, subject }
   WIDGET_RENDER_FAILED: 'widget.render_failed', // { widgetTitle, errorMsg }
 
-  // Learning events
-  CONCEPT_SEEN: 'learning.concept_seen',        // { concept, subject, visualType }
-  FOLLOW_UP_ASKED: 'learning.follow_up',        // { fromWidget, question, subject }
-  CONFUSION_SIGNAL: 'learning.confusion',       // { concept, subject } (repeated question)
+  // Interaction events
+  TOPIC_SEEN: 'visual.topic_seen',              // { topic, subject, visualType }
+  FOLLOW_UP_ASKED: 'dialogue.follow_up',        // { fromWidget, question, subject }
+  CONFUSION_SIGNAL: 'dialogue.confusion',       // { topic, subject } (repeated question)
 
   // Session events
   SESSION_STARTED: 'session.started',
@@ -688,7 +688,7 @@ SENTRY_DSN=...
 
 # Feature flags
 ENABLE_WIDGET_CACHE=true              # Cache generated widgets by concept
-ENABLE_LEARNER_PROFILES=true          # Track per-learner concept history
+ENABLE_USER_PROFILES=true             # Track per-user topic history
 MAX_CONVERSATION_TURNS=200            # Cap conversation length
 WIDGET_RENDER_TIMEOUT_MS=30000        # Timeout for widget load
 ```

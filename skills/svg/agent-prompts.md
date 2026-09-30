@@ -250,7 +250,7 @@ Generated text must be:
   - In sentence case — only the first word and proper nouns capitalized
   - Parallel in structure across sibling slots
   - Within the slot's character budget — compute BEFORE generating
-  - Free of filler phrases ("This section covers...", "Here you will learn...")
+  - Free of filler phrases ("This section covers...", "You are about to discover...")
 
 Character budgets by slot role (at standard font size):
   title:    ≤ 40 characters

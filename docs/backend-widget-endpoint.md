@@ -89,8 +89,8 @@ class Message(BaseModel):
 class ChatRequest(BaseModel):
     conversation_id: str | None = None   # None = start new conversation
     messages: list[Message] = Field(..., min_length=1, max_length=200)
-    subject: str | None = None           # e.g. "machine_learning", "calculus"
-    learner_profile: dict[str, Any] | None = None
+    subject: str | None = None           # e.g. "optimization", "calculus"
+    user_profile: dict[str, Any] | None = None
 
     @field_validator("messages")
     @classmethod
@@ -165,16 +165,16 @@ SHOW_WIDGET_TOOL: ToolParam = {
 # services/system_prompt.py
 from typing import Any
 
-BASE_SYSTEM_PROMPT = """You are an expert learning companion for {subject}.
+BASE_SYSTEM_PROMPT = """You are an expert visual companion for {subject}.
 
-Your learners are motivated students who want to genuinely understand, not just memorise.
+Your users are readers who want to genuinely understand, not just skim.
 
 Your mission is to make difficult concepts understandable through precise, interactive visual
 explanations — not just verbal descriptions.
 
 ## Visual routing rules
 
-Call show_widget when the learner's question involves:
+Call show_widget when the user's question involves:
 - A mechanism, process, or system ("how does X work")
 - A comparison or contrast ("what's the difference between X and Y")
 - A sequence of steps ("walk me through X")
@@ -186,13 +186,13 @@ Do NOT call show_widget for:
 - Direct factual lookups ("what year was X invented")
 - Single-sentence definitions
 - Code debugging or writing tasks
-- When the learner explicitly asks for text only
+- When the user explicitly asks for text only
 
 ## Visual type selection
 
 INTERACTIVE HTML: concept has a manipulable parameter, cyclic processes, charts, animations
 ILLUSTRATIVE SVG: spatial metaphor for mechanism (attention=fan of lines, recursion=stack frames)
-FLOWCHART SVG: sequential steps or decision trees the learner needs to follow
+FLOWCHART SVG: sequential steps or decision trees the user needs to follow
 STRUCTURAL SVG: containment — things inside other things
 MERMAID erDiagram: database schemas or class hierarchies only
 
@@ -215,46 +215,46 @@ Structure: <style> → content HTML → CDN <script> → logic <script>
 No localStorage/sessionStorage — state in JS variables only
 No position:fixed — collapses iframe height
 CDN only from: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, unpkg.com
-All numbers shown to learners must be rounded (toFixed/Math.round)
+All numbers shown to users must be rounded (toFixed/Math.round)
 Colors via CSS variables only — never hardcode
 
-## sendPrompt — the learning bridge
+## sendPrompt — the follow-up bridge
 
 Every diagram node that could lead to deeper understanding must have:
   onclick="sendPrompt('specific follow-up question about that node')"
 
-Rules: specific, one level deeper, learner-voiced, never generic "tell me more".
+Rules: specific, one level deeper, user-voiced, never generic "tell me more".
 
-## Pedagogical principles
+## Explanation principles
 
 1. ILLUSTRATIVE FIRST: draw mechanisms spatially — not boxes and arrows.
 2. INTERACTIVE OVER STATIC: if the system has a control, give the diagram that control.
 3. PROGRESSIVE DISCLOSURE: start 3-4 nodes max, depth lives in sendPrompt clicks.
-4. SWITCH REPRESENTATIONS: if learner signals confusion, switch visual type entirely.
+4. SWITCH REPRESENTATIONS: if user signals confusion, switch visual type entirely.
 5. PROSE BETWEEN DIAGRAMS: never stack visuals — one sentence before, one after.
 
-## Tone: warm, encouraging, Socratic. Ask one check question per response.
+## Tone: warm, encouraging, candid. Ask one check question per response.
 """
 
 
 def build_system_prompt(
     subject: str | None,
-    learner_profile: dict[str, Any] | None
+    user_profile: dict[str, Any] | None
 ) -> str:
     subject_str = subject or "computer science, mathematics, and science"
     prompt = BASE_SYSTEM_PROMPT.format(subject=subject_str)
 
-    if learner_profile:
-        concepts_seen: list[str] = learner_profile.get("concepts_seen", [])
-        struggling_with: list[str] = learner_profile.get("struggling_with", [])
+    if user_profile:
+        topics_visualized: list[str] = user_profile.get("topics_visualized", [])
+        unclear_topics: list[str] = user_profile.get("unclear_topics", [])
 
-        if concepts_seen:
-            prompt += f"\n\n## Learner session context\n"
-            prompt += f"Concepts already visualised: {', '.join(concepts_seen)}\n"
+        if topics_visualized:
+            prompt += f"\n\n## User session context\n"
+            prompt += f"Topics already visualized: {', '.join(topics_visualized)}\n"
             prompt += "Do not re-explain these at the same depth — build on them.\n"
 
-        if struggling_with:
-            prompt += f"Learner has shown confusion about: {', '.join(struggling_with)}\n"
+        if unclear_topics:
+            prompt += f"User has shown confusion about: {', '.join(unclear_topics)}\n"
             prompt += "Use different visual encodings for these topics.\n"
 
     return prompt
@@ -312,7 +312,7 @@ async def chat(
     else:
         messages = [m.model_dump() for m in request.messages]
 
-    system_prompt = build_system_prompt(request.subject, request.learner_profile)
+    system_prompt = build_system_prompt(request.subject, request.user_profile)
 
     async def event_stream() -> AsyncIterator[str]:
         """
@@ -618,7 +618,7 @@ import anthropic
 from app.config import settings
 from app.routers.chat import router as chat_router
 
-app = FastAPI(title="Learning Companion API", version="1.0.0")
+app = FastAPI(title="Visual Companion API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,

@@ -164,9 +164,9 @@ When operating under this skill, the agent is a **brand-safe SVG template operat
 
 1. `SKILL.md` — understand the mission and operating model
 2. `brand-system.md` — internalize the client's design language before touching anything
-3. `svg-template-analysis.md` — learn how to read and parse a template safely
-4. `svg-instance-editing.md` — learn cloning and safe mutation rules
-5. `text-fitting-and-alignment.md` — learn measurement and placement rules
-6. `violation-detection.md` — learn validation and repair logic
-7. `template-routing.md` — learn selection and switching decisions
+3. `svg-template-analysis.md` — template parsing and safety rules
+4. `svg-instance-editing.md` — cloning and safe mutation rules
+5. `text-fitting-and-alignment.md` — measurement and placement rules
+6. `violation-detection.md` — validation and repair logic
+7. `template-routing.md` — selection and switching decisions
 8. `agent-prompts.md` — get the system prompt and tool schemas

@@ -1,6 +1,6 @@
 ---
 name: pydantic-ai-visual-agent
-description: Complete PydanticAI agent implementation that replicates claude.ai's on-the-fly visual generation capability. Covers the show_widget tool definition as a Pydantic model with RunContext, the agent system prompt with full routing and SVG/HTML rules, streaming response handling that yields interleaved text and tool call events, learner profile as agent dependency, multi-turn conversation wiring, the re-explanation and progressive-disclosure patterns, and a FastAPI streaming integration layer. Use this document to build the PydanticAI agent that generates educational visuals on the fly.
+description: Complete PydanticAI agent implementation that replicates claude.ai's on-the-fly visual generation capability. Covers the show_widget tool definition as a Pydantic model with RunContext, the agent system prompt with full routing and SVG/HTML rules, streaming response handling that yields interleaved text and tool call events, user profile as agent dependency, multi-turn conversation wiring, the re-explanation and progressive-disclosure patterns, and a FastAPI streaming integration layer. Use this document to build the PydanticAI agent that generates visual explanations on the fly.
 ---
 
 # PydanticAI Visual Agent — Complete Implementation
@@ -9,7 +9,7 @@ description: Complete PydanticAI agent implementation that replicates claude.ai'
 
 PydanticAI gives us:
 - **Typed tool parameters** — `WidgetParams` is a Pydantic model; the agent validates before calling the tool
-- **Dependency injection** — `LearnerContext` (profile, history, subject) flows into the system prompt and tools via `RunContext`
+- **Dependency injection** — `AgentContext` (profile, history, subject) flows into the system prompt and tools via `RunContext`
 - **Structured streaming** — `.run_stream()` yields typed events; text deltas and tool calls are first-class
 - **Model-agnostic** — swap `claude-sonnet-4-20250514` for any provider without changing tool definitions
 
@@ -71,24 +71,24 @@ class WidgetParams(BaseModel):
     )
 
 
-class LearnerProfile(BaseModel):
-    """Accumulated knowledge about a learner — grows over the session."""
+class UserProfile(BaseModel):
+    """Accumulated knowledge about a user — grows over the session."""
     name: str | None = None
     subject: str = "general science and mathematics"
-    concepts_seen: list[str] = Field(default_factory=list)
-    struggling_with: list[str] = Field(default_factory=list)
+    topics_visualized: list[str] = Field(default_factory=list)
+    unclear_topics: list[str] = Field(default_factory=list)
     widget_clicks: int = 0
     session_turns: int = 0
 
 
-class LearnerContext(BaseModel):
+class AgentContext(BaseModel):
     """
     Injected into every agent run as a dependency.
     Contains everything the system prompt and tools need.
     """
-    profile: LearnerProfile
+    profile: UserProfile
     conversation_id: str | None = None
-    from_widget: str | None = None   # title of diagram the learner just clicked in
+    from_widget: str | None = None   # title of diagram the user just clicked in
 
     model_config = {"arbitrary_types_allowed": True}
 ```
@@ -100,12 +100,12 @@ class LearnerContext(BaseModel):
 ```python
 # agent/prompts.py
 from __future__ import annotations
-from agent.models import LearnerContext
+from agent.models import AgentContext
 
 ROUTING_AND_RULES = """
 ## Visual routing rules
 
-Call show_widget when the learner's question involves:
+Call show_widget when the user's question involves:
 - A mechanism, process, or system ("how does X work")
 - A comparison or contrast ("what's the difference between X and Y")
 - A sequence of steps ("walk me through X")
@@ -117,18 +117,18 @@ Do NOT call show_widget for:
 - Direct factual lookups ("what year was X invented")
 - Single-sentence definitions
 - Code debugging or writing tasks
-- When the learner explicitly asks for text only
+- When the user explicitly asks for text only
 
 ## Visual type selection
 
 INTERACTIVE HTML when:
-- Concept has a manipulable parameter (learning rate, frequency, temperature)
+- Concept has a manipulable parameter (step size, frequency, temperature)
 - Process is cyclic — use HTML stepper, never SVG ring
 - Output involves a chart or data plot (Chart.js, D3)
 - Animation would show how the system behaves
 
 ILLUSTRATIVE SVG when:
-- Learner needs intuition about a mechanism
+- User needs intuition about a mechanism
 - Spatial metaphor explains better than steps:
   - attention = fan of weighted lines between tokens
   - recursion = literal stack of frames growing/shrinking
@@ -137,7 +137,7 @@ ILLUSTRATIVE SVG when:
   - TCP stream = numbered envelopes in flight between two endpoints
 
 FLOWCHART SVG when:
-- Learner needs to follow sequential steps or decisions
+- User needs to follow sequential steps or decisions
 - Output is documentation of a process
 
 STRUCTURAL SVG when:
@@ -148,7 +148,7 @@ MERMAID erDiagram when:
 - Database schema or class hierarchy with typed fields
 
 NEVER substitute a flowchart when illustrative is correct.
-When learner says "I don't understand X" — default to illustrative, not flowchart.
+When user says "I don't understand X" — default to illustrative, not flowchart.
 
 ## SVG rules — zero tolerance
 
@@ -168,11 +168,11 @@ Structure order: <style> → content HTML → CDN <script> → logic <script>
 No localStorage, sessionStorage, IndexedDB — state in JS variables only
 No position:fixed — collapses iframe height
 CDN only from: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, unpkg.com
-All numbers shown to learners must be rounded (toFixed / Math.round)
+All numbers shown to users must be rounded (toFixed / Math.round)
 All colors via CSS variables — never hardcode
 Animations: @keyframes on transform and opacity only
 
-## sendPrompt — the learning bridge
+## sendPrompt — the follow-up bridge
 
 Every meaningful diagram element must have:
   onclick="sendPrompt('specific follow-up question about that element')"
@@ -180,7 +180,7 @@ Every meaningful diagram element must have:
 Rules:
 - SPECIFIC: name what was clicked ("What does the dip tube do?" not "Tell me more")
 - ONE LEVEL DEEPER: go beyond the label
-- LEARNER-VOICED: phrase as the learner would ask it
+- USER-VOICED: phrase as the user would ask it
 - NEVER GENERIC: "tell me more about this" is forbidden
 
 ## Response structure
@@ -189,56 +189,56 @@ For concept explanations:
 1. One sentence framing what the visual shows
 2. show_widget call
 3. One sentence connecting to the next point
-4. Optional Socratic check question
+4. Optional understanding check question
 
 NEVER stack two show_widget calls without prose between them.
 """
 
-PEDAGOGICAL_PRINCIPLES = """
-## Pedagogical principles
+EXPLANATION_PRINCIPLES = """
+## Explanation principles
 
 1. ILLUSTRATIVE FIRST: draw mechanisms spatially — spatial metaphor > boxes and arrows.
 2. INTERACTIVE OVER STATIC: if the real system has a control, give the diagram that control.
 3. PROGRESSIVE DISCLOSURE: start sparse (3-4 nodes), depth lives in sendPrompt clicks.
-4. SWITCH REPRESENTATIONS: if learner signals confusion, completely different visual type.
+4. SWITCH REPRESENTATIONS: if user signals confusion, completely different visual type.
 5. COMPARISON IS UNDERSTANDING: show X alongside its natural counterpart.
 6. PROSE BETWEEN DIAGRAMS: one context sentence before, one transition sentence after.
 
-Tone: warm, encouraging, Socratic. Ask one comprehension question per response.
+Tone: warm, encouraging, candid. Ask one follow-up question per response.
 """
 
 
-def build_system_prompt(ctx: LearnerContext) -> str:
+def build_system_prompt(ctx: AgentContext) -> str:
     profile = ctx.profile
     lines = [
-        f"You are an expert learning companion for {profile.subject}.",
+        f"You are an expert visual companion for {profile.subject}.",
         "",
         "Your mission: make difficult concepts genuinely understandable through precise,",
         "interactive visual explanations — not just verbal descriptions.",
         "",
         ROUTING_AND_RULES,
-        PEDAGOGICAL_PRINCIPLES,
+        EXPLANATION_PRINCIPLES,
     ]
 
-    # Dynamic learner context section
-    if profile.concepts_seen or profile.struggling_with or ctx.from_widget:
-        lines.append("## Current learner context")
+    # Dynamic user context section
+    if profile.topics_visualized or profile.unclear_topics or ctx.from_widget:
+        lines.append("## Current user context")
 
         if ctx.from_widget:
             lines.append(
-                f"The learner just clicked a node in the '{ctx.from_widget}' diagram. "
+                f"The user just clicked a node in the '{ctx.from_widget}' diagram. "
                 "Their question comes from that specific interaction — respond with that context in mind."
             )
 
-        if profile.concepts_seen:
+        if profile.topics_visualized:
             lines.append(
-                f"Concepts already visualised this session: {', '.join(profile.concepts_seen)}. "
+                f"Topics already visualized this session: {', '.join(profile.topics_visualized)}. "
                 "Do not re-explain at the same depth — build on them."
             )
 
-        if profile.struggling_with:
+        if profile.unclear_topics:
             lines.append(
-                f"Learner has shown confusion about: {', '.join(profile.struggling_with)}. "
+                f"User has shown confusion about: {', '.join(profile.unclear_topics)}. "
                 "Use a different visual encoding than before for these topics."
             )
 
@@ -257,7 +257,7 @@ import pydantic_ai
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models.anthropic import AnthropicModel
 
-from agent.models import WidgetParams, LearnerContext
+from agent.models import WidgetParams, AgentContext
 from agent.prompts import build_system_prompt
 from app.config import settings
 
@@ -272,7 +272,7 @@ model = AnthropicModel(
 # ── Agent definition ─────────────────────────────────────────────────────────
 visual_agent = Agent(
     model=model,
-    deps_type=LearnerContext,
+    deps_type=AgentContext,
     system_prompt=build_system_prompt,   # called fresh on every run with current deps
     retries=2,                            # retry on transient API errors
 )
@@ -281,7 +281,7 @@ visual_agent = Agent(
 # ── The show_widget tool ──────────────────────────────────────────────────────
 @visual_agent.tool
 async def show_widget(
-    ctx: RunContext[LearnerContext],
+    ctx: RunContext[AgentContext],
     params: WidgetParams,
 ) -> str:
     """
@@ -292,10 +292,10 @@ async def show_widget(
 
     Do NOT use for plain factual answers, code writing, or text editing tasks.
     """
-    # Update learner profile with what was just shown
-    learner = ctx.deps.profile
-    if params.title not in learner.concepts_seen:
-        learner.concepts_seen.append(params.title)
+    # Update user profile with what was just shown
+    profile = ctx.deps.profile
+    if params.title not in profile.topics_visualized:
+        profile.topics_visualized.append(params.title)
 
     # Return a tool result that tells the model the widget was rendered
     # The actual widget code is extracted by the stream consumer from the tool call params
@@ -305,7 +305,7 @@ async def show_widget(
 # ── Optional: validation tool for agent self-checking ───────────────────────
 @visual_agent.tool
 async def validate_svg_rules(
-    ctx: RunContext[LearnerContext],
+    ctx: RunContext[AgentContext],
     widget_code: str,
 ) -> str:
     """
@@ -361,7 +361,7 @@ from pydantic_ai.messages import (
     UserPromptPart,
 )
 
-from agent.models import LearnerContext, WidgetParams
+from agent.models import AgentContext, WidgetParams
 from agent.visual_agent import visual_agent
 
 
@@ -396,7 +396,7 @@ AgentEvent = TextEvent | WidgetStartEvent | WidgetReadyEvent | StreamEndEvent
 
 async def run_agent_stream(
     user_message: str,
-    deps: LearnerContext,
+    deps: AgentContext,
     message_history: list[ModelMessage],
 ) -> AsyncIterator[AgentEvent]:
     """
@@ -497,7 +497,7 @@ from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
 from pydantic_ai.messages import ModelMessage
 
-from agent.models import LearnerContext, LearnerProfile
+from agent.models import AgentContext, UserProfile
 from agent.runner import (
     run_agent_stream,
     TextEvent,
@@ -528,11 +528,11 @@ async def chat(
         )
 
     # Build deps from request
-    profile = LearnerProfile(
+    profile = UserProfile(
         subject=request.subject or "general science and mathematics",
-        **(request.learner_profile or {})
+        **(request.user_profile or {})
     )
-    deps = LearnerContext(
+    deps = AgentContext(
         profile=profile,
         conversation_id=request.conversation_id,
         from_widget=getattr(request, "from_widget", None),
@@ -672,7 +672,7 @@ export async function consumePydanticStream(
 
 ```python
 # agent/patterns.py
-from agent.models import LearnerContext, LearnerProfile
+from agent.models import AgentContext, UserProfile
 from agent.runner import run_agent_stream, AgentEvent
 from collections.abc import AsyncIterator
 from pydantic_ai.messages import ModelMessage
@@ -681,19 +681,19 @@ from pydantic_ai.messages import ModelMessage
 async def reexplain_with_different_visual(
     concept: str,
     previous_widget_title: str,
-    deps: LearnerContext,
+    deps: AgentContext,
     history: list[ModelMessage],
 ) -> AsyncIterator[AgentEvent]:
     """
-    Called when learner signals confusion. Injects explicit instruction
+    Called when user signals confusion. Injects explicit instruction
     to use a different visual encoding.
     """
-    # Mark this concept as struggled with
-    if concept not in deps.profile.struggling_with:
-        deps.profile.struggling_with.append(concept)
+    # Mark this concept as unclear
+    if concept not in deps.profile.unclear_topics:
+        deps.profile.unclear_topics.append(concept)
 
     instruction = (
-        f"The learner still doesn't understand '{concept}' after seeing the "
+        f"The user still doesn't understand '{concept}' after seeing the "
         f"'{previous_widget_title}' visual. "
         "Choose a COMPLETELY DIFFERENT visual encoding — "
         "if the previous was flowchart → try illustrative SVG, "
@@ -708,7 +708,7 @@ async def reexplain_with_different_visual(
 
 async def progressive_explain(
     topic: str,
-    deps: LearnerContext,
+    deps: AgentContext,
     history: list[ModelMessage],
 ) -> AsyncIterator[AgentEvent]:
     """
@@ -730,18 +730,18 @@ async def progressive_explain(
     # Turn 2: zoom into most complex component
     zoom_prompt = (
         f"Now zoom into the most important or most commonly misunderstood component of '{topic}'. "
-        "The learner has seen the overview — assume they have that context."
+        "The user has seen the overview — assume they have that context."
     )
     async for event in run_agent_stream(zoom_prompt, deps, messages_after_overview):
         yield event
 ```
 
-### Pattern B: Socratic quiz after visual
+### Pattern B: understanding quiz after visual
 
 ```python
 async def concept_then_quiz(
     concept: str,
-    deps: LearnerContext,
+    deps: AgentContext,
     history: list[ModelMessage],
 ) -> AsyncIterator[AgentEvent]:
     """
@@ -749,7 +749,7 @@ async def concept_then_quiz(
     """
     prompt = (
         f"Explain '{concept}' with an appropriate visual. "
-        "After the visual, ask one Socratic question to check the learner understood "
+        "After the visual, ask one follow-up question to check the user understood "
         "the mechanism — not just the definition. "
         "Phrase the question as if curious, not testing."
     )
@@ -765,13 +765,13 @@ async def concept_then_quiz(
 # tests/test_visual_agent.py
 import pytest
 import asyncio
-from agent.models import LearnerContext, LearnerProfile
+from agent.models import AgentContext, UserProfile
 from agent.runner import run_agent_stream, WidgetReadyEvent, TextEvent
 
 
 @pytest.mark.asyncio
 async def test_agent_generates_widget_for_mechanism_question():
-    deps = LearnerContext(profile=LearnerProfile(subject="computer science"))
+    deps = AgentContext(profile=UserProfile(subject="computer science"))
     events = []
 
     async for event in run_agent_stream(
@@ -793,7 +793,7 @@ async def test_agent_generates_widget_for_mechanism_question():
 
 @pytest.mark.asyncio
 async def test_agent_returns_plain_text_for_factual_question():
-    deps = LearnerContext(profile=LearnerProfile(subject="history"))
+    deps = AgentContext(profile=UserProfile(subject="history"))
     events = []
 
     async for event in run_agent_stream(
@@ -812,11 +812,11 @@ async def test_agent_returns_plain_text_for_factual_question():
 
 @pytest.mark.asyncio
 async def test_agent_uses_html_for_interactive_concept():
-    deps = LearnerContext(profile=LearnerProfile(subject="machine learning"))
+    deps = AgentContext(profile=UserProfile(subject="optimization"))
     events = []
 
     async for event in run_agent_stream(
-        "Show me how learning rate affects gradient descent convergence",
+        "Show me how step size affects gradient descent convergence",
         deps=deps,
         message_history=[]
     ):
@@ -838,7 +838,7 @@ async def test_agent_uses_html_for_interactive_concept():
 ```
 visual_agent = Agent(
     model=AnthropicModel("claude-sonnet-4-20250514"),
-    deps_type=LearnerContext,
+    deps_type=AgentContext,
     system_prompt=build_system_prompt,   # called with fresh deps each run
     retries=2
 )
@@ -846,7 +846,7 @@ visual_agent = Agent(
 @visual_agent.tool
 async def show_widget(ctx, params: WidgetParams) -> str: ...
   # Validates widget params via Pydantic
-  # Updates learner profile (adds to concepts_seen)
+  # Updates user profile (adds to topics_visualized)
   # Returns tool result string (actual rendering done by frontend)
 
 run_agent_stream(user_text, deps, history)

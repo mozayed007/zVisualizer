@@ -173,11 +173,11 @@ def _build_source_doc_contract(
 def _build_agent_identity_section(config: AgentConfig) -> list[str]:
     agent = config.agent
     prompt_contract = agent.prompt_contract
-    role_label = "an expert SVG template operator" if agent.id == "svg" else "an expert visual learning companion"
+    role_label = "an expert SVG template operator" if agent.id == "svg" else "an expert visual companion agent"
     return [
         f"You are {agent.name}, {role_label}.",
         f"Subject area: {agent.subject_area}.",
-        f"Learner profile: {agent.learner_profile}.",
+        f"Audience: {agent.audience}.",
         f"Tone: {agent.tone}.",
         "Follow the YAML runtime prompt contract exactly.",
         f"Mandatory skill loading rule: {prompt_contract.mandatory_skill_loading_rule}",
@@ -201,9 +201,9 @@ def _build_yaml_contract_sections(config: AgentConfig) -> list[str]:
     if prompt_contract.mandatory_visual_rules:
         visual_rules = [f"- {rule}" for rule in prompt_contract.mandatory_visual_rules]
         sections.append("\n".join(["Mandatory visual rules:"] + visual_rules))
-    if prompt_contract.pedagogical_rules:
-        pedagogical_rules = [f"- {rule}" for rule in prompt_contract.pedagogical_rules]
-        sections.append("\n".join(["Mandatory pedagogical rules:"] + pedagogical_rules))
+    if prompt_contract.explanation_rules:
+        explanation_rules = [f"- {rule}" for rule in prompt_contract.explanation_rules]
+        sections.append("\n".join(["Mandatory explanation rules:"] + explanation_rules))
 
     return sections
 
@@ -211,8 +211,8 @@ def _build_yaml_contract_sections(config: AgentConfig) -> list[str]:
 def _build_response_style_sections(config: AgentConfig) -> list[str]:
     agent = config.agent
     sections: list[str] = []
-    if agent.response_style.ask_one_check_question:
-        sections.append("Ask at most one comprehension check question per response.")
+    if agent.response_style.ask_one_follow_up_question:
+        sections.append("Ask at most one follow-up question per response.")
     if agent.response_style.prefer_visual_when_helpful:
         sections.append("Prefer a visual whenever it materially improves understanding.")
     if agent.response_style.never_stack_widgets_without_text:
@@ -227,24 +227,24 @@ def _build_visualizer_system_sections(config: AgentConfig) -> list[str]:
         "- Use plain text when a visual would not materially improve understanding.",
         "- Use SVG for reference maps, architecture, containment, and mechanism visuals "
         "when there is no real parameter to vary.",
-        "- Use HTML widgets when the underlying system has a control the learner should vary "
-        "(step index, learning rate, frequency, etc.) or when stepping through stages "
-        "teaches better than one static frame.",
+        "- Use HTML widgets when the underlying system has a control the user should vary "
+        "(step index, step size, frequency, etc.) or when stepping through stages "
+        "explains better than one static frame.",
         "- Use HTML widgets for comparisons where both concepts have tunable parameters "
-        "the learner should explore (learning rate, temperature, thresholds). "
-        "Let the learner vary and see both respond.",
+        "the user should explore (step size, temperature, thresholds). "
+        "Let the user vary and see both respond.",
         "- Prefer illustrative diagrams over flowcharts for mechanism explanation; "
         "avoid defaulting to box-and-arrow flowcharts for intuition questions.",
-        "- Interactivity is for pedagogy, not decoration. Every slider, button, or step "
+        "- Interactivity must carry meaning, not decoration. Every slider, button, or step "
         "must change something that matters to understanding.",
         "When a visual is needed, call the show_widget tool with validated SVG or HTML widget code.",
         "show_widget title contract: the title must be short snake_case only, for example "
         "'dense_vs_moe_architecture'. Never use spaces, punctuation, parentheses, or title case.",
-        "Unless the learner explicitly asks for multiple visuals, prefer one strong final "
+        "Unless the user explicitly asks for multiple visuals, prefer one strong final "
         "show_widget call per turn rather than multiple separate widgets.",
         "Choose SVG or HTML using the decision logic from claude-visuals-guide-v2: "
         "static explanatory diagram → SVG; parameter-driven or staged process → HTML. "
-        "Never add JS chrome that does not encode a teaching-relevant variable.",
+        "Never add JS chrome that does not encode a meaningful variable.",
         "If you call show_widget, still finish the turn with one brief connecting "
         "sentence after the tool call. Do not end the turn immediately after the tool.",
         "Widget output contract: "
@@ -284,13 +284,13 @@ def _build_visualizer_system_sections(config: AgentConfig) -> list[str]:
         "Use only approved script CDNs: cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, and unpkg.com. "
         "Keep CDN script tags before inline logic. Do not emit <link> tags.",
         "Detailed HTML behavior rules: "
-        "state lives in JS variables, learner-visible computed numbers must be rounded, "
+        "state lives in JS variables, user-visible computed numbers must be rounded, "
         "charts/canvas need an explicit-height container, and any meaningful follow-up control "
-        "should call sendPrompt(...) with a specific learner-voiced question.",
+        "should call sendPrompt(...) with a specific user-voiced question.",
         "Detailed HTML animation rules: "
-        "animations must teach, stay lightweight, prefer transform/opacity motion, and respect "
+        "animations must inform, stay lightweight, prefer transform/opacity motion, and respect "
         "prefers-reduced-motion.",
-        "Visual pedagogy contract: "
+        "Visual explanation contract: "
         "Keep the first visual focused and uncluttered, usually 3 to 6 major elements. "
         "Use progressive disclosure and meaningful sendPrompt follow-ups where useful.",
         "Color variety contract: Vary color ramps across different visuals in the same conversation. "
@@ -301,7 +301,7 @@ def _build_visualizer_system_sections(config: AgentConfig) -> list[str]:
     if prompt_contract.visual_requests_require_tool_call:
         sections.extend(
             [
-                "If the learner explicitly asks for a visual, diagram, architecture, flow, "
+                "If the user explicitly asks for a visual, diagram, architecture, flow, "
                 "or interactive explanation, you must call show_widget unless "
                 "the request is impossible to visualize faithfully.",
                 "Do not write SVG or HTML code directly in your text response. "
@@ -323,7 +323,7 @@ def _build_svg_system_sections(config: AgentConfig) -> list[str]:
         "Repair before export. If identity and fit conflict, preserve identity and escalate.",
         "show_widget tool contract for this agent:",
         "- title must be short snake_case",
-        "- loading_messages must contain 1 to 4 short learner-facing strings",
+        "- loading_messages must contain 1 to 4 short user-facing strings",
         "- template_id is required on every call (library relative path, e.g. sequence/sequence-4.svg)",
         "- widget_code must be the populated working clone as a raw <svg> fragment only",
         "- never emit DOCTYPE, html, head, body, scripts, or comments",
@@ -337,7 +337,7 @@ def _build_svg_system_sections(config: AgentConfig) -> list[str]:
     if prompt_contract.visual_requests_require_tool_call:
         sections.extend(
             [
-                "If the learner asks for a populated SVG, diagram update, or template instance, "
+                "If the user asks for a populated SVG, diagram update, or template instance, "
                 "you must call show_widget with template_id unless the request is impossible.",
                 "Do not write raw SVG in prose. Use show_widget with template_id and widget_code.",
             ]
@@ -383,23 +383,23 @@ def build_widget_fallback_prompt(
 
     sections = [
         f"You are {agent.name}, but for this run you are operating as a dedicated visual generator.",
-        "Your only job is to produce one valid widget payload for the learner request.",
+        "Your only job is to produce one valid widget payload for the user request.",
         "Return structured widget data only. Do not return prose, markdown fences, or explanations.",
-        "The widget must be learner-friendly, polished, dark-mode-safe, and immediately renderable.",
+        "The widget must be user-friendly, polished, dark-mode-safe, and immediately renderable.",
         "This visual generator exists because the main conversational pass failed to call the tool.",
         "You must still follow the same visual skill and platform contracts.",
         f"Mandatory skill loading rule: {prompt_contract.mandatory_skill_loading_rule}",
         f"Quality bar: {prompt_contract.target_quality_bar}",
         "Critical output rules:",
         "- title must be short snake_case",
-        "- loading_messages must contain 1 to 4 short learner-facing strings",
+        "- loading_messages must contain 1 to 4 short user-facing strings",
         "- widget_code must be raw SVG starting with <svg> or raw HTML fragment",
         "- never include DOCTYPE, html, head, or body",
         "- never return prose outside widget payload fields",
         "- never emit raw widget code as chat text",
         "- default to polished SVG for architectures; use HTML when a real parameter or step sequence is load-bearing",
         "- for comparisons of parameterized systems (optimizers, hyperparameter-sensitive "
-        "algorithms), prefer HTML widgets with shared controls so learners can explore both side-by-side",
+        "algorithms), prefer HTML widgets with shared controls so users can explore both side-by-side",
         "- prefer an overview visual with 3 to 6 major elements",
         "- make the visual explanatory, not decorative",
         "- for SVG, use viewBox='0 0 680 H' and include arrow defs",
@@ -420,7 +420,7 @@ def build_widget_fallback_prompt(
         "- for HTML, never emit <link> tags, localStorage/sessionStorage/IndexedDB, or position:fixed",
         "- for HTML, keep approved CDN scripts before inline logic and use only "
         "cdnjs.cloudflare.com, esm.sh, cdn.jsdelivr.net, or unpkg.com",
-        "- for HTML, keep learner-visible computed numbers rounded and give canvas/chart containers explicit height",
+        "- for HTML, keep user-visible computed numbers rounded and give canvas/chart containers explicit height",
         "- use only host-supported tokens: c-{ramp}, --color-*, --font-*, --border-radius-*, and --p/--s/--t/--bg2/--b",
         "- never invent color variables like --c-purple-500",
         "- use exact token names like --color-text-info, not palette-stop tokens like --color-blue-200",
@@ -429,7 +429,7 @@ def build_widget_fallback_prompt(
         "- vary ramp selection across conversation visuals; avoid repeating the same "
         "purple-teal-amber trio unless continuity is intentionally being preserved",
         "Distilled Claude-style visual guidance:",
-        "- visuals should teach with spatial structure, not repeat the prose",
+        "- visuals should explain with spatial structure, not repeat the prose",
         "- mechanisms should use illustrative diagrams before generic flowcharts",
         "- every meaningful node should be clickable when practical using sendPrompt(...)",
         "- progressive disclosure beats clutter",

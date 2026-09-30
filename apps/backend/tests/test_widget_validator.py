@@ -357,7 +357,7 @@ def test_svg_geometry_violations_reproduce_orange_callout_case() -> None:
         "<rect x='440' y='110' width='140' height='56'></rect>"
         "<text class='ts' x='510' y='136' text-anchor='middle' dominant-baseline='central'>"
         "<tspan x='510' dy='0'>The \"Complex Part\"</tspan>"
-        "<tspan x='510' dy='16'>Learns to route each token to the best expert</tspan>"
+        "<tspan x='510' dy='16'>Routes each token to the best expert</tspan>"
         "</text>"
         "</g>"
         "</svg>"

@@ -4,7 +4,7 @@
 
 This document defines the complete decision tree an agent must run before generating any visual output. Every branch is explained with rationale, examples, and anti-patterns.
 
-**Critical rule:** The routing decision is made on *intent*, not *subject matter*. The same topic can produce different visuals depending on what the learner needs to understand.
+**Critical rule:** The routing decision is made on *intent*, not *subject matter*. The same topic can produce different visuals depending on what the user needs to understand.
 
 ---
 
@@ -45,7 +45,7 @@ User message arrives
         │ YES → Mermaid.js erDiagram (not hand-coded SVG)
         │ NO  ▼
 ┌─────────────────────────────────┐
-│ What does the learner need?     │
+│ What does the user need?     │
 │ Steps/decisions → FLOWCHART     │
 │ Containment/architecture → STRUCTURAL
 │ Mechanism/intuition → ILLUSTRATIVE
@@ -59,17 +59,17 @@ User message arrives
 Generate plain text when:
 - The question is a direct factual lookup ("What year was TCP invented?")
 - The answer is a single definition that can be stated in one sentence
-- The learner explicitly says "just explain in words"
+- The user explicitly says "just explain in words"
 - The task is code debugging, code writing, or text editing
 - The concept has no spatial, relational, or sequential structure
 
-**Test:** Remove the visual from the response. Does the learner lose any understanding? If no — don't generate it.
+**Test:** Remove the visual from the response. Does the user lose any understanding? If no — don't generate it.
 
 ---
 
 ## Branch 2: HTML + JS widget
 
-Use HTML when the concept has a **control** — something the learner should be able to manipulate to see how the output changes.
+Use HTML when the concept has a **control** — something the user should be able to manipulate to see how the output changes.
 
 ### When to choose HTML
 
@@ -86,7 +86,7 @@ Use HTML when the concept has a **control** — something the learner should be 
 ### Decision rule: does the real system have a control?
 - Water heater has a thermostat → add temperature slider
 - LLM has a temperature parameter → add temperature slider
-- Gradient descent has a learning rate → add learning rate slider
+- Gradient descent has a step size → add step size slider
 - Sort algorithm has array contents → add "shuffle" and "step" buttons
 - Wave has frequency and amplitude → add two range sliders
 
@@ -98,7 +98,7 @@ Use HTML when the concept has a **control** — something the learner should be 
 4. <script> — logic using the CDN global
 ```
 
-This order ensures the learner sees content while scripts are still downloading.
+This order ensures the user sees content while scripts are still downloading.
 
 ### Available CDN libraries
 All must load from: `cdnjs.cloudflare.com`, `esm.sh`, `cdn.jsdelivr.net`, `unpkg.com`
@@ -110,10 +110,10 @@ D3.js 7.x        — custom data visualizations, force-directed graphs
 Three.js r128    — 3D scenes (use r128 specifically)
 Mermaid.js 11    — flowcharts, ERDs, class diagrams (import from esm.sh)
 Plotly.js        — scientific charts, 3D surface plots
-Tone.js          — audio synthesis for music/acoustics lessons
+Tone.js          — audio synthesis for music and acoustics demos
 MathJS           — symbolic math, unit conversion, expression parsing
 Lodash           — array/object utilities
-Papaparse        — CSV parsing for data lessons
+Papaparse        — CSV parsing for data demos
 SheetJS          — Excel file parsing
 TensorFlow.js    — in-browser ML model inference
 ```
@@ -123,9 +123,9 @@ TensorFlow.js    — in-browser ML model inference
 ## Branch 3: SVG — Flowchart
 
 ### When to use
-- The concept is a **sequence of steps** the learner needs to follow
+- The concept is a **sequence of steps** the user needs to follow
 - The concept involves **decisions** with branching paths
-- The learner asked: "what are the steps", "walk me through the process", "what happens when"
+- The user asked: "what are the steps", "walk me through the process", "what happens when"
 - The output is **documentation** of a process (not explanation of a mechanism)
 
 ### Flowchart composition rules
@@ -166,9 +166,9 @@ Before writing any `<line>` or `<path>`, trace its start and end coordinates aga
 
 ### When to use
 - The concept involves **containment** — things inside other things
-- The learner needs to understand **where** something lives in a hierarchy
+- The user needs to understand **where** something lives in a hierarchy
 - Examples: CPU caches (L1 inside core, L2 shared), VPC/subnet/EC2, cell organelles, file system (blocks in inodes in partitions)
-- The learner asked: "what's the architecture of", "where does X live", "how is X organized"
+- The user asked: "what's the architecture of", "where does X live", "how is X organized"
 
 ### Structural diagram rules
 ```
@@ -200,9 +200,9 @@ Hand-coded SVG cannot reliably handle crow's-foot connectors or auto-layout. Mer
 
 ### When to use
 This is the most powerful and most commonly underused type. Choose it when:
-- The learner needs **intuition** about a mechanism, not a map of its components
+- The user needs **intuition** about a mechanism, not a map of its components
 - The concept is abstract but can be given a spatial metaphor
-- The learner said: "I don't get X", "explain how X actually works", "give me an intuition for X"
+- The user said: "I don't get X", "explain how X actually works", "give me an intuition for X"
 - A picture of the *process* would explain what a list of steps cannot
 
 ### Physical subjects → draw them
@@ -250,9 +250,9 @@ If a `<path>` needs more than ~6 segments, simplify it. Recognizable silhouette 
 
 ## Subject-specific routing table
 
-| Learner says | Visual type | Key visual element |
+| User says | Visual type | Key visual element |
 |---|---|---|
-| "explain gradient descent" | HTML interactive | Loss surface, ball, learning rate slider |
+| "explain gradient descent" | HTML interactive | Loss surface, ball, step size slider |
 | "transformer architecture" | SVG structural | Labeled layer boxes: embedding, attention, FFN |
 | "how does attention work" | SVG illustrative | Token row, amber query token, weighted fan lines |
 | "what are the steps of backprop" | SVG flowchart | Forward → Loss → Backward → Update |
@@ -272,19 +272,19 @@ If a `<path>` needs more than ~6 segments, simplify it. Recognizable silhouette 
 
 ## Parameterized Comparisons
 
-When the learner asks to compare two concepts, the choice between HTML and SVG depends on one question: *Would exploration through parameter variation deepen understanding?*
+When the user asks to compare two concepts, the choice between HTML and SVG depends on one question: *Would exploration through parameter variation deepen understanding?*
 
-If both concepts being compared have real parameters the learner could adjust (learning rates, thresholds, step counts, temperatures, input values), an HTML widget with controls teaches more than a static side-by-side SVG.
+If both concepts being compared have real parameters the user could adjust (step sizes, thresholds, step counts, temperatures, input values), an HTML widget with controls explains more than a static side-by-side SVG.
 
 ### Decision Rule
 
 | Has tunable parameters? | Comparison type | Visual Type |
 |-------------------------|-----------------|-------------|
-| **Yes, parameters affect behavior** | Optimizers, activation functions, schedulers, temperature-based systems, iterative algorithms | **HTML widget** — controls let the learner see how each responds to the same parameter change |
+| **Yes, parameters affect behavior** | Optimizers, activation functions, schedulers, temperature-based systems, iterative algorithms | **HTML widget** — controls let the user see how each responds to the same parameter change |
 | **No, behavior is fixed** | Data structures, architectural patterns, static taxonomies, procedural sequences | **SVG** — show structural or behavioral differences directly |
-| **Step-through teaches better** | Algorithms where sequence matters more than static structure | **HTML stepper** — let the learner step through both side-by-side |
+| **Step-through explains better** | Algorithms where sequence matters more than static structure | **HTML stepper** — let the user step through both side-by-side |
 
-### Anti-pattern: Static comparison when variation would teach
+### Anti-pattern: Static comparison when variation would clarify more
 
 ```
 BAD:  "Compare X and Y" (both have tunable parameters) → static side-by-side SVG with fixed values
@@ -294,7 +294,7 @@ BAD:  "Compare Stack and Queue" → HTML widget trying to vary a "push speed" pa
 GOOD: "Compare Stack and Queue" → SVG showing LIFO vs FIFO behavior directly
 ```
 
-When comparing any two concepts, ask: *Would letting the learner adjust a meaningful parameter teach more than showing fixed values?* If yes → HTML widget. If no → SVG.
+When comparing any two concepts, ask: *Would letting the user adjust a meaningful parameter explain more than fixed values?* If yes → HTML widget. If no → SVG.
 
 ---
 
@@ -313,16 +313,16 @@ BAD:  6+ nodes in one SVG → cramped, arrows crossing, text overflowing
 GOOD: Overview diagram (3 nodes) → prose transition → detail diagram per component
 ```
 
-### 3. Generating the same visual for a confused learner
+### 3. Generating the same visual for a confused user
 ```
-BAD:  Learner says "I still don't get it" → regenerate same SVG flowchart
+BAD:  User says "I still don't get it" → regenerate same SVG flowchart
 GOOD: Switch to interactive HTML, or illustrative SVG, or concrete example
 ```
 
 ### 4. Missing the interactivity opportunity
 ```
 BAD:  Static SVG of gradient descent (ball on surface, fixed position)
-GOOD: HTML with learning rate slider, step button, trail of past positions
+GOOD: HTML with step size slider, step button, trail of past positions
 ```
 
 ### 5. Orphaned diagrams

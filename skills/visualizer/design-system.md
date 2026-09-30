@@ -310,7 +310,7 @@ Assign color to a node:
 
 ## Color Variety Guidance
 
-The visual learning companion has 9 distinct color ramps available. Using the same ramps repeatedly creates visual fatigue and reduces distinctiveness between concepts.
+The visual companion agent has 9 distinct color ramps available. Using the same ramps repeatedly creates visual fatigue and reduces distinctiveness between concepts.
 
 ### Variety Rules
 

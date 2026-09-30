@@ -3,11 +3,11 @@
 ## When to generate HTML instead of SVG
 
 Generate an HTML widget (not SVG) when:
-- The concept has a **control** the learner should manipulate (slider, toggle, step button)
+- The concept has a **control** the user should manipulate (slider, toggle, step button)
 - The visual needs **animation** that responds to time or user input
 - The output uses an **external library** (Chart.js, D3, Three.js)
 - The process is **cyclic** (event loop, Krebs cycle → stepper, not ring)
-- The learner needs to see **live calculations** update as inputs change
+- The user needs to see **live calculations** update as inputs change
 - The concept benefits from **multiple panels** (step-through explainer)
 
 **Decision rule:** If the real-world system has a dial, lever, or switch, give the diagram that control.
@@ -41,7 +41,7 @@ The output is a **fragment** that gets injected as `iframe srcdoc`. It renders i
 4. Logic <script>      — uses the CDN globals loaded above
 ```
 
-This order ensures the learner sees content immediately while libraries download. If the logic script comes before the CDN script, the global will be undefined and the widget breaks silently.
+This order ensures the user sees content immediately while libraries download. If the logic script comes before the CDN script, the global will be undefined and the widget breaks silently.
 
 ---
 
@@ -122,15 +122,15 @@ The host stylesheet pre-styles bare HTML elements. Use them as-is, add `style=".
 <button onclick="doSomething()">Run</button>
 
 <!-- sendPrompt button — append ↗ to signal it opens chat -->
-<button onclick="sendPrompt('What happens if the learning rate is too high?')">
-  Ask about learning rate ↗
+<button onclick="sendPrompt('What happens if the step size is too high?')">
+  Ask about step size ↗
 </button>
 ```
 
 ### Number display — ALWAYS round
 ```javascript
 // JS float math leaks: 0.1 + 0.2 = 0.30000000000000004
-// Every number shown to a learner must be rounded
+// Every number shown to a user must be rounded
 
 element.textContent = value.toFixed(2);           // 2 decimals
 element.textContent = Math.round(value);           // integer
@@ -166,18 +166,18 @@ For widgets that should persist state across page navigations, the host applicat
 window.sendPrompt = text => parent.postMessage({ type: 'prompt', text }, '*');
 
 // USAGE in onclick attributes:
-onclick="sendPrompt('Why does the learning rate affect convergence speed?')"
+onclick="sendPrompt('Why does the step size affect convergence speed?')"
 
 // USAGE in JS code:
 document.querySelector('#explore-btn').addEventListener('click', () => {
-  sendPrompt(`What happens to the loss when learning rate is ${currentLR.toFixed(3)}?`);
+  sendPrompt(`What happens to the loss when the step size is ${currentStepSize.toFixed(3)}?`);
 });
 ```
 
 **sendPrompt question quality rules:**
-- Be specific to what the learner just interacted with
-- Include the current value if it's informative ("what happens at learning rate 0.1")
-- Phrase as the learner would ask it, not as a machine label
+- Be specific to what the user just interacted with
+- Include the current value if it's informative ("what happens at step size 0.1")
+- Phrase as the user would ask it, not as a machine label
 - One question only — not "tell me more" or "explain everything"
 
 ---
@@ -292,10 +292,10 @@ function prevStep() { goTo(current - 1); }
 </div>
 
 <div style="display:flex;align-items:center;gap:12px;margin-top:12px;font-size:13px;color:var(--color-text-secondary)">
-  <label>Learning rate</label>
-  <input type="range" min="1" max="100" value="10" id="lrSlider"
-         oninput="updateLR(this.value)" style="flex:1">
-  <span id="lrDisplay" style="min-width:40px;font-family:var(--font-mono)">0.10</span>
+  <label>Step size</label>
+  <input type="range" min="1" max="100" value="10" id="stepSlider"
+         oninput="updateStepSize(this.value)" style="flex:1">
+  <span id="stepDisplay" style="min-width:40px;font-family:var(--font-mono)">0.10</span>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
@@ -306,13 +306,13 @@ const textColor = dark ? '#9b9890' : '#5a5855';
 const gridColor = dark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)';
 
 // Compute initial data
-function computeLoss(lr, steps = 30) {
+function computeLoss(stepSize, steps = 30) {
   const data = [];
   let loss = 10;
   for (let i = 0; i < steps; i++) {
-    // Simplified: high LR oscillates, low LR converges slowly
-    const noise = (Math.random() - 0.5) * lr * 0.4;
-    loss = Math.max(0.01, loss * (1 - lr * 0.08) + noise);
+    // Simplified: high step size oscillates, low step size converges slowly
+    const noise = (Math.random() - 0.5) * stepSize * 0.4;
+    loss = Math.max(0.01, loss * (1 - stepSize * 0.08) + noise);
     data.push(+loss.toFixed(3));
   }
   return data;
@@ -348,10 +348,10 @@ const chart = new Chart(ctx, {
   }
 });
 
-function updateLR(rawValue) {
-  const lr = rawValue / 100;
-  document.getElementById('lrDisplay').textContent = lr.toFixed(2);
-  chart.data.datasets[0].data = computeLoss(lr);
+function updateStepSize(rawValue) {
+  const stepSize = rawValue / 100;
+  document.getElementById('stepDisplay').textContent = stepSize.toFixed(2);
+  chart.data.datasets[0].data = computeLoss(stepSize);
   chart.update();
 }
 </script>

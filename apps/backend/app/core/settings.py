@@ -121,7 +121,7 @@ class Settings(BaseSettings):
     max_conversation_turns: int = 200
     max_message_chars: int = 60_000
     enable_widget_cache: bool = True
-    enable_learner_profiles: bool = True
+    enable_user_profiles: bool = True
     agent_load_full_skill_docs_on_session_start: bool = True
 
     chat_api_key: SecretStr | None = Field(

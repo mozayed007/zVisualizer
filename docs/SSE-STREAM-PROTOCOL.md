@@ -15,7 +15,7 @@ This document is the **authoritative contract** for `POST /api/chat` when `Conte
 | `message` | string | yes | Latest user message (trimmed, non-empty) |
 | `conversation_id` | string \| null | no | Omit or null to start a new conversation |
 | `subject` | string \| null | no | Optional subject hint |
-| `learner_profile` | object \| null | no | Merged when `ENABLE_LEARNER_PROFILES` is true |
+| `user_profile` | object \| null | no | Merged when `ENABLE_USER_PROFILES` is true |
 | `from_widget` | string \| null | no | Snake_case widget `title` when the turn is a follow-up from that visual (chips / `sendPrompt`) |
 
 If `conversation_id` is set but unknown, the server responds with **404** before streaming (see [PLATFORM-REQUIREMENTS.md](PLATFORM-REQUIREMENTS.md)).
